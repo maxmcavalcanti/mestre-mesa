@@ -23,3 +23,11 @@ export function paraMensagens(historico) {
     content: m.texto,
   }));
 }
+
+// O system pode ser uma string ou { estavel, dinamico } (prefixo cacheável +
+// parte que muda a cada turno). Providers que não cacheiam usam isto pra
+// achatar tudo num texto só.
+export function textoSystem(system) {
+  if (typeof system === "string") return system;
+  return [system.estavel, system.dinamico].filter(Boolean).join("\n\n");
+}

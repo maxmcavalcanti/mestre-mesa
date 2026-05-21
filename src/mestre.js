@@ -76,18 +76,26 @@ export function montarResumo(c) {
 
 // `lembrancas` chega PRONTA de quem chama (jogo.js faz a busca async antes), por
 // isso esta função continua síncrona.
+//
+// Devolve { estavel, dinamico }:
+// - estavel: regras + notas do módulo + resumo. Muda raramente (resumo a cada K
+//   turnos), então pode ser cacheado pelo provider (ver claude.js).
+// - dinamico: estado atual + party + lembranças do RAG. Muda a cada turno.
+// A ordem final pro modelo é estavel + dinamico (ver textoSystem).
 export function montarSystem(promptBase, ativo, c, personagens, lembrancas = []) {
-  const blocos = [promptBase];
-  const resumo = montarResumo(c);
-  if (resumo) blocos.push(resumo);
-  blocos.push(resumoEstado(ativo, c));
-  const party = montarParty(personagens, ativo.id);
-  if (party) blocos.push(party);
+  const estaveis = [promptBase];
   const aventura = montarContextoAventura(c);
-  if (aventura) blocos.push(aventura);
+  if (aventura) estaveis.push(aventura);
+  const resumo = montarResumo(c);
+  if (resumo) estaveis.push(resumo);
+
+  const dinamicos = [resumoEstado(ativo, c)];
+  const party = montarParty(personagens, ativo.id);
+  if (party) dinamicos.push(party);
   const mem = montarLembrancas(lembrancas);
-  if (mem) blocos.push(mem);
-  return blocos.join("\n\n");
+  if (mem) dinamicos.push(mem);
+
+  return { estavel: estaveis.join("\n\n"), dinamico: dinamicos.join("\n\n") };
 }
 
 // Separa a narração das linhas de protocolo [TESTE] e [ESTADO].

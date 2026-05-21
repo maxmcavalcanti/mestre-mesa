@@ -6,6 +6,7 @@ import {
   resolverTeste,
   montarContextoAventura,
   montarResumo,
+  montarSystem,
 } from "../src/mestre.js";
 
 test("parseTags separa narração de [TESTE]", () => {
@@ -89,4 +90,28 @@ test("montarResumo: vazio sem resumo, bloco com resumo", () => {
   const r = montarResumo({ resumo: "O herói achou a pedra branca." });
   assert.ok(r.includes("## História até agora"));
   assert.ok(r.includes("pedra branca"));
+});
+
+test("montarSystem separa prefixo estável (cacheável) de dinâmico", () => {
+  const ativo = {
+    id: "a", nome: "Heroi", classe: "Mago", nivel: 1, hp: 10, hp_max: 10,
+    atributos: { forca: 10, destreza: 10, constituicao: 10, inteligencia: 10, sabedoria: 10, carisma: 10 },
+    inventario: [], tracos: "",
+  };
+  const c = {
+    local: "Cripta", quests: [],
+    modulo: { sinopse: "SINOPSE", notas: "NOTAS", fontes: [] },
+    resumo: "RESUMO",
+  };
+  const s = montarSystem("REGRAS", ativo, c, [ativo], [{ turno: 1, texto: "LEMBRANCA", score: 1 }]);
+
+  // estável: regras + notas + resumo (muda raramente -> cacheável)
+  assert.ok(s.estavel.includes("REGRAS"));
+  assert.ok(s.estavel.includes("NOTAS"));
+  assert.ok(s.estavel.includes("RESUMO"));
+  // dinâmico: estado atual + lembranças (muda a cada turno -> fora do cache)
+  assert.ok(s.dinamico.includes("Cripta"));
+  assert.ok(s.dinamico.includes("LEMBRANCA"));
+  // o dinâmico NÃO pode vazar pro prefixo estável
+  assert.ok(!s.estavel.includes("LEMBRANCA"));
 });

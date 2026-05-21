@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { lerPromptBase } from "../src/estado.js";
 import { criarCampanha, criarPersonagem } from "../src/dados.js";
 import { processarAcao } from "../src/jogo.js";
+import { textoSystem } from "../src/llm/provider.js";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 const promptBase = await lerPromptBase();
@@ -14,11 +15,12 @@ const promptBase = await lerPromptBase();
 // Provider fake: distingue pedido de resumo (system tem "diário") de narração.
 const ref = { resumosPedidos: 0, ultimoSystemNarracao: "" };
 const provider = async (system) => {
-  if (system.includes("diário")) {
+  const texto = textoSystem(system);
+  if (texto.includes("diário")) {
     ref.resumosPedidos++;
     return "RESUMO: o herói falou com o ferreiro assustado, achou a pedra branca e desceu ao salão do sarcófago.";
   }
-  ref.ultimoSystemNarracao = system;
+  ref.ultimoSystemNarracao = texto;
   return "A cena avança um pouco.";
 };
 

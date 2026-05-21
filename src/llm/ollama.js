@@ -1,4 +1,4 @@
-import { paraMensagens } from "./provider.js";
+import { paraMensagens, textoSystem } from "./provider.js";
 
 // LLM local via Ollama (http://localhost:11434). Requer `ollama serve` rodando
 // e um modelo baixado, ex: `ollama pull llama3.1`. Modelo via env OLLAMA_MODEL.
@@ -12,7 +12,10 @@ export async function ollama(system, mensagens) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: modelo,
-      messages: [{ role: "system", content: system }, ...paraMensagens(mensagens)],
+      messages: [
+        { role: "system", content: textoSystem(system) },
+        ...paraMensagens(mensagens),
+      ],
       stream: false,
     }),
   });

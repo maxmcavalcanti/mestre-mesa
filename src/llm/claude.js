@@ -1,8 +1,14 @@
 import { paraMensagens } from "./provider.js";
 
-// LLM via API da Anthropic, com prompt caching no system prompt (que é estável
-// entre turnos). Requer ANTHROPIC_API_KEY no ambiente e o pacote @anthropic-ai/sdk
-// instalado (npm i @anthropic-ai/sdk). Modelo via env ANTHROPIC_MODEL.
+// LLM via API da Anthropic. Requer ANTHROPIC_API_KEY no ambiente e o pacote
+// @anthropic-ai/sdk instalado (npm i @anthropic-ai/sdk). Modelo via ANTHROPIC_MODEL.
+//
+// Prompt caching: o system vem como { estavel, dinamico }. Só o bloco `estavel`
+// (regras + notas + resumo) leva cache_control — ele muda raramente, então a
+// Anthropic relê esse prefixo a uma fração do custo. O bloco `dinamico` (estado,
+// party, lembranças do RAG) muda a cada turno e fica FORA do cache, depois do
+// breakpoint. Caching exige um prefixo estável; misturar o dinâmico nele zeraria
+// o ganho.
 export async function claude(system, mensagens) {
   let Anthropic;
   try {
@@ -16,12 +22,17 @@ export async function claude(system, mensagens) {
   const client = new Anthropic();
   const modelo = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 
+  const partes =
+    typeof system === "string" ? { estavel: system, dinamico: "" } : system;
+  const blocosSystem = [
+    { type: "text", text: partes.estavel, cache_control: { type: "ephemeral" } },
+  ];
+  if (partes.dinamico) blocosSystem.push({ type: "text", text: partes.dinamico });
+
   const resp = await client.messages.create({
     model: modelo,
     max_tokens: 1024,
-    system: [
-      { type: "text", text: system, cache_control: { type: "ephemeral" } },
-    ],
+    system: blocosSystem,
     messages: paraMensagens(mensagens),
   });
 

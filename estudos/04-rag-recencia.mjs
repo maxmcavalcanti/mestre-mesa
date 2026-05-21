@@ -9,6 +9,7 @@ import { lerPromptBase } from "../src/estado.js";
 import { criarCampanha, criarPersonagem } from "../src/dados.js";
 import { processarAcao } from "../src/jogo.js";
 import { mock } from "../src/llm/mock.js";
+import { textoSystem } from "../src/llm/provider.js";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 const promptBase = await lerPromptBase();
@@ -24,7 +25,8 @@ const limpar = (id) => rm(join(raiz, "data", "campanhas", id), { recursive: true
 function espiao() {
   const ref = { system: "" };
   const fn = async (system) => {
-    ref.system = system;
+    const t = textoSystem(system);
+    if (!t.includes("diário")) ref.system = t; // ignora chamadas de resumo (B1)
     return "Você prossegue com cautela.";
   };
   return { fn, ref };
