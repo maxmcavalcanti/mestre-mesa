@@ -77,7 +77,28 @@ export function layout({ titulo, corpo }) {
   <script src="/htmx.min.js"></script>
   <style>${CSS}</style>
 </head>
-<body>${corpo}</body>
+<body>${corpo}
+<script>
+  // Mantém a última mensagem à vista (rolar pro fim), no log (desktop) ou na
+  // página (celular). Só rola se o usuário já estava perto do fim, pra não puxar
+  // a tela durante a leitura quando o polling atualiza.
+  function rolarParaUltimo() {
+    var log = document.querySelector('.log');
+    var ultimo = log && log.lastElementChild;
+    if (ultimo) ultimo.scrollIntoView({ block: 'end' });
+  }
+  function pertoDoFim() {
+    var log = document.querySelector('.log');
+    if (log && log.scrollHeight > log.clientHeight + 4)
+      return log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+    return (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 120;
+  }
+  var estavaPerto = true;
+  document.addEventListener('htmx:beforeSwap', function () { estavaPerto = pertoDoFim(); });
+  document.addEventListener('htmx:afterSwap', function () { if (estavaPerto) rolarParaUltimo(); });
+  document.addEventListener('DOMContentLoaded', rolarParaUltimo);
+</script>
+</body>
 </html>`;
 }
 

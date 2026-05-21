@@ -229,14 +229,24 @@ function ipsLocais() {
   return ips;
 }
 
-app.listen(PORTA, "0.0.0.0", () => {
+const servidor = app.listen(PORTA, "0.0.0.0", () => {
   console.log(`\nMestre de Mesa no ar:`);
   console.log(`  neste PC:        http://localhost:${PORTA}`);
   for (const ip of ipsLocais()) {
     console.log(`  na rede local:   http://${ip}:${PORTA}  (abra no celular)`);
   }
+  console.log(`\nCtrl+C para encerrar.`);
   console.log(
-    `\nDica: se o celular não abrir, libere a porta ${PORTA} no Firewall do Windows`,
+    `Dica: se o celular não abrir, libere a porta ${PORTA} no Firewall do Windows`,
   );
   console.log(`(Painel de Controle > Firewall > Regras de Entrada > Nova Regra > Porta TCP ${PORTA}).\n`);
 });
+
+// Encerramento limpo: Ctrl+C / término do terminal fecham o servidor na hora.
+for (const sinal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(sinal, () => {
+    console.log("\nencerrando…");
+    servidor.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 800).unref(); // força se demorar
+  });
+}

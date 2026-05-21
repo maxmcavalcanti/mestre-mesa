@@ -22,8 +22,12 @@ npm install
 ### No navegador (recomendado, joga com amigos)
 
 ```bash
-npm run server
+node server.js
 ```
+
+Rode o `node` direto (e não `npm run server`): assim o processo fica anexado ao
+terminal, `Ctrl+C` encerra na hora e fechar o terminal fecha o servidor. Via npm,
+o Windows interpõe um `cmd` que pode deixar o node pendurado no Ctrl+C.
 
 Ao subir, o servidor mostra o endereço local e o da rede (`http://SEU_IP:3000`).
 Cada jogador abre o link no celular, escolhe seu personagem e joga na sua vez.
