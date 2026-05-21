@@ -1,0 +1,22 @@
+# dependências
+node_modules/
+
+# dados de jogo (campanhas/personagens salvos localmente)
+data/
+
+# variáveis de ambiente / segredos
+.env
+.env.*
+
+# logs e temporários
+*.log
+npm-debug.log*
+
+# sistema operacional / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# config local do Claude Code
+.claude/

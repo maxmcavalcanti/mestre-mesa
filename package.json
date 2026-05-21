@@ -1,0 +1,22 @@
+{
+  "name": "mestre-mesa",
+  "version": "0.1.0",
+  "description": "Mestre de RPG de mesa (D&D narrativo-leve) no terminal e no navegador, com LLM trocável (mock/Ollama/Claude)",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "bin": {
+    "mestre": "cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "server": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
