@@ -1,4 +1,5 @@
 import { modificador, comSinal } from "../modificadores.js";
+import { questTexto, questEstado } from "../mestre.js";
 
 export function esc(s) {
   return String(s ?? "").replace(
@@ -43,10 +44,27 @@ const CSS = `
   label { font-size: .85rem; color: #a8a2b8; }
   details summary { cursor: pointer; color: #c9a86a; margin-bottom: .5rem; }
   .grid6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+  ul.lista { list-style: none; padding: 0; margin: .3rem 0 .8rem; }
+  ul.lista li { padding: .15rem 0; font-size: .9rem; }
+  .col-party h2 { margin: 1rem 0 .3rem; border-top: 1px solid #322e3f; padding-top: .6rem; }
+  .col-party h2:first-child { border-top: none; padding-top: 0; margin-top: 0; }
   ul.campanhas { list-style: none; padding: 0; }
   ul.campanhas li { background: #1d1b26; border: 1px solid #322e3f; border-radius: 8px; padding: .8rem 1rem; margin-bottom: .6rem; }
   .htmx-indicator { opacity: 0; transition: opacity .2s; }
   .htmx-request .htmx-indicator { opacity: 1; }
+
+  /* Celular: empilha em uma coluna e deixa a página rolar naturalmente. */
+  @media (max-width: 720px) {
+    .container { padding: .8rem; }
+    .jogo { flex-direction: column; gap: .8rem; }
+    .col-log, .col-party { flex: none; width: 100%; min-width: 0; }
+    /* sem scroll interno no celular: uma rolagem só, a da página */
+    .log { max-height: none; overflow: visible; }
+    header.topo { flex-wrap: wrap; gap: .2rem .8rem; }
+    header.topo h1 { font-size: 1rem; }
+    .acao .linha { flex-wrap: wrap; }
+    .acao .linha input { flex: 1 1 100%; }
+  }
 `;
 
 export function layout({ titulo, corpo }) {
@@ -109,13 +127,59 @@ function cardPersonagem(p, ativoId, campanhaId) {
            <input type="hidden" name="turno_de" value="${esc(p.id)}">
            <button class="sec" type="submit">Passar a vez</button>
          </form>`;
+  const cond = p.condicoes?.length
+    ? `<div class="meta">Condições: ${esc(p.condicoes.join(", "))}</div>`
+    : "";
   return `<div class="card ${p.id === ativoId ? "ativo" : ""}">
     <h3>${esc(p.nome)}</h3>
     <div class="meta">${esc(p.classe)} • nível ${p.nivel} • HP ${p.hp}/${p.hp_max}</div>
     <div class="atributos">${atrib}</div>
     <div class="meta">Itens: ${esc(p.inventario.join(", ") || "—")}</div>
+    ${cond}
     ${botaoVez}
   </div>`;
+}
+
+// Missões com estado: concluídas riscadas, falhas em destaque.
+function blocoMissoes(campanha) {
+  const quests = campanha.quests || [];
+  if (!quests.length) return "";
+  const icone = { ativa: "•", concluida: "✓", falhou: "✗" };
+  const itens = quests
+    .map((q) => {
+      const est = questEstado(q);
+      const estilo =
+        est === "concluida"
+          ? "opacity:.55;text-decoration:line-through"
+          : est === "falhou"
+            ? "opacity:.7;color:#c98a8a"
+            : "";
+      return `<li style="${estilo}">${icone[est] || "•"} ${esc(questTexto(q))}</li>`;
+    })
+    .join("");
+  return `<h2 style="font-size:1rem">Missões</h2><ul class="lista">${itens}</ul>`;
+}
+
+// Estado determinístico do mundo: NPCs conhecidos + flags.
+function blocoMundo(campanha) {
+  const npcs = Object.values(campanha.npcs || {});
+  const flags = Object.entries(campanha.flags || {});
+  if (!npcs.length && !flags.length) return "";
+  const npcItens = npcs
+    .map((n) => {
+      const det = [n.natureza, n.estado, n.disposicao].filter(Boolean).join(" · ");
+      const local = n.local ? ` <span class="meta">@ ${esc(n.local)}</span>` : "";
+      return `<li><strong>${esc(n.nome)}</strong>${det ? ` <span class="meta">(${esc(det)})</span>` : ""}${local}</li>`;
+    })
+    .join("");
+  const flagItens = flags
+    .map(([k, v]) => `<li class="meta">${esc(k)}: ${esc(v)}</li>`)
+    .join("");
+  return (
+    `<h2 style="font-size:1rem">Mundo</h2>` +
+    (npcItens ? `<ul class="lista">${npcItens}</ul>` : "") +
+    (flagItens ? `<ul class="lista">${flagItens}</ul>` : "")
+  );
 }
 
 function areaAcao(campanha, ativo, eu) {
@@ -206,6 +270,8 @@ export function painelJogo(campanha, personagens, eu) {
       <h2 style="font-size:1rem">Party</h2>
       ${cards || '<div class="meta">Nenhum personagem ainda.</div>'}
       ${formNovoPersonagem(campanha.id)}
+      ${blocoMissoes(campanha)}
+      ${blocoMundo(campanha)}
     </aside>
     ${poll}
   </div>`;
