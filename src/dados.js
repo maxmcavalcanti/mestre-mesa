@@ -70,6 +70,7 @@ export async function criarCampanha({ titulo, local, quests, modulo } = {}) {
     resumo_ate: 0, // até qual mensagem do histórico o resumo cobre
     npcs: {}, // { id: { nome, natureza, estado, disposicao, local, notas } }
     flags: {}, // estado do mundo: { chave: valor } (portas, eventos, etc.)
+    avisos: [], // avisos do sistema pro LLM corrigir no próximo turno
   };
   await mkdir(dirPersonagens(id), { recursive: true });
   await salvarJson(arqCampanha(id), campanha);
@@ -119,6 +120,7 @@ export async function criarPersonagem(campanhaId, dados = {}) {
       carisma: 10,
     },
     inventario: dados.inventario || [],
+    condicoes: dados.condicoes || [], // ex.: envenenado, atordoado
     tracos: dados.tracos || "",
   };
   await mkdir(dirPersonagens(campanhaId), { recursive: true });

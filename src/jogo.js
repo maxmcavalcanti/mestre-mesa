@@ -73,7 +73,11 @@ async function gerarTurno({ campanha, personagem, personagens, provider, promptB
   const consulta = `${campanha.local}\n${entradaJogador}`;
   const lembrancas = await recuperarLembrancas(campanha, consulta);
 
-  const system = montarSystem(promptBase, personagem, campanha, party, lembrancas);
+  // E3: avisos gerados no turno anterior (aplicarEstado) são mostrados uma vez.
+  const avisos = campanha.avisos || [];
+  campanha.avisos = [];
+
+  const system = montarSystem(promptBase, personagem, campanha, party, lembrancas, avisos);
   const contexto = campanha.historico.slice(-MAX_CONTEXTO);
   const bruto = await provider(system, contexto);
 

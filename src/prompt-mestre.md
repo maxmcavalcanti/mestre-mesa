@@ -37,7 +37,11 @@ Operações válidas:
 - inventario-=item           ex: inventario-=tocha
 - local=Novo lugar           ex: local=Salão dos ossos
 - quests+=nova missão
-- quests-=missão concluída
+- quests-=missão (remover)
+- quest.concluida=<texto>    marca uma missão existente como concluída (match por texto)
+- quest.falhou=<texto>       marca como fracassada
+- condicao+=envenenado       condição no personagem (use alvo= antes p/ outro)
+- condicao-=envenenado       remover condição
 - alvo=<id>                  ex: alvo=mara-1a2b3c
 
 Exemplo de linha: [ESTADO] hp-=3; inventario+=chave enferrujada; local=Salão dos ossos
@@ -69,6 +73,11 @@ Se a seção "## Party" listar mais de um personagem, narre para o grupo todo.
 Por padrão, dano/cura/itens em [ESTADO] afetam quem está jogando agora. Para
 afetar outro personagem, ponha 'alvo=<id>' antes das mudanças, usando o id que
 aparece entre colchetes na lista da party. Ex: [ESTADO] alvo=mara-1a2b3c; hp-=4
+
+## Avisos do sistema
+Se aparecer uma seção "## Avisos do sistema", o estado real do jogo divergiu do
+que você narrou (ex.: tentou usar um item que o personagem não tem). Ajuste a
+narração para bater com o estado real — não insista no que o aviso apontou.
 
 ## Importante
 As linhas [TESTE] e [ESTADO] são instruções para o sistema, não fazem parte da história.

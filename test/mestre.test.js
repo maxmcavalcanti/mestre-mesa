@@ -8,6 +8,7 @@ import {
   montarResumo,
   montarSystem,
   montarMundo,
+  montarAvisos,
 } from "../src/mestre.js";
 
 test("parseTags separa narração de [TESTE]", () => {
@@ -44,7 +45,7 @@ test("aplicarEstado muda hp, inventário, local e quests do ativo", () => {
   assert.equal(p.hp, 7);
   assert.deepEqual(p.inventario, ["adaga", "poção de cura"]);
   assert.equal(c.local, "Cripta");
-  assert.deepEqual(c.quests, ["achar a saída"]);
+  assert.deepEqual(c.quests, [{ texto: "achar a saída", estado: "ativa" }]);
   assert.ok(mod.has("a"));
 });
 
@@ -127,6 +128,44 @@ test("aplicarEstado funciona em campanha antiga (sem npcs/flags) e não quebra h
   assert.equal(c.flags.y, "1");
   assert.equal(ativo.hp, 7); // regressão: hp continua funcionando
   assert.deepEqual(ativo.inventario, ["adaga", "tocha"]);
+});
+
+test("aplicarEstado: condições add/remove respeitam alvo", () => {
+  const a = { id: "a", hp: 5, hp_max: 5, inventario: [], condicoes: [] };
+  const b = { id: "b", hp: 5, hp_max: 5, inventario: [], condicoes: [] };
+  const c = { local: "x", quests: [] };
+  aplicarEstado(["condicao+=envenenado"], a, c, [a, b]);
+  assert.deepEqual(a.condicoes, ["envenenado"]);
+  aplicarEstado(["alvo=b; condicao+=atordoado"], a, c, [a, b]);
+  assert.deepEqual(b.condicoes, ["atordoado"]);
+  aplicarEstado(["condicao-=envenenado"], a, c, [a, b]);
+  assert.deepEqual(a.condicoes, []);
+});
+
+test("aplicarEstado: quests ganham estado e migram de string antiga", () => {
+  const c = { local: "x", quests: ["achar a saída"] }; // formato antigo
+  const a = { id: "a", hp: 5, hp_max: 5, inventario: [] };
+  aplicarEstado(["quests+=derrotar o lich"], a, c, [a]);
+  aplicarEstado(["quest.concluida=achar a saída"], a, c, [a]);
+  const porTexto = Object.fromEntries(c.quests.map((q) => [q.texto, q.estado]));
+  assert.equal(porTexto["achar a saída"], "concluida");
+  assert.equal(porTexto["derrotar o lich"], "ativa");
+});
+
+test("aplicarEstado: gera avisos para remoções/marcas inexistentes", () => {
+  const c = { local: "x", quests: [] };
+  const a = { id: "a", nome: "Lia", hp: 5, hp_max: 5, inventario: ["adaga"] };
+  aplicarEstado(["inventario-=poção; quest.concluida=missão fantasma"], a, c, [a]);
+  assert.equal(c.avisos.length, 2);
+  assert.ok(c.avisos.some((x) => x.includes("poção")));
+  assert.ok(c.avisos.some((x) => x.toLowerCase().includes("quest")));
+});
+
+test("montarAvisos: vazio sem avisos, bloco com avisos", () => {
+  assert.equal(montarAvisos([]), "");
+  const b = montarAvisos(['Lia não tinha o item removido: "poção".']);
+  assert.ok(b.includes("## Avisos do sistema"));
+  assert.ok(b.includes("poção"));
 });
 
 test("montarMundo lista NPCs e flags", () => {
