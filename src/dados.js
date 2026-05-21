@@ -66,6 +66,8 @@ export async function criarCampanha({ titulo, local, quests, modulo } = {}) {
     },
     turno_de: null,
     historico: [],
+    resumo: "", // resumo rolante da história
+    resumo_ate: 0, // até qual mensagem do histórico o resumo cobre
   };
   await mkdir(dirPersonagens(id), { recursive: true });
   await salvarJson(arqCampanha(id), campanha);

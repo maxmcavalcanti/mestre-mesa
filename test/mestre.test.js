@@ -5,6 +5,7 @@ import {
   aplicarEstado,
   resolverTeste,
   montarContextoAventura,
+  montarResumo,
 } from "../src/mestre.js";
 
 test("parseTags separa narração de [TESTE]", () => {
@@ -81,4 +82,11 @@ test("montarContextoAventura inclui sinopse e notas", () => {
   assert.ok(ctx.includes("## Aventura"));
   assert.ok(ctx.includes("Vilarejo amaldiçoado"));
   assert.ok(ctx.includes("NPC: ferreiro"));
+});
+
+test("montarResumo: vazio sem resumo, bloco com resumo", () => {
+  assert.equal(montarResumo({ resumo: "" }), "");
+  const r = montarResumo({ resumo: "O herói achou a pedra branca." });
+  assert.ok(r.includes("## História até agora"));
+  assert.ok(r.includes("pedra branca"));
 });

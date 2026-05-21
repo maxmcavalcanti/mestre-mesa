@@ -5,6 +5,13 @@ const MAX_CONTEXTO = 16; // quantas mensagens recentes mandar pro LLM por turno
 const TOP_K = 4; // quantas lembranças recuperar por turno
 const MIN_SCORE = 0.4; // corte de relevância (calibrado pro bge-m3; ver estudos/)
 const PESO_RECENCIA = 0.1; // desempate leve a favor de cenas mais recentes
+const LIMIAR_RESUMO = 8; // mensagens antigas acumuladas antes de re-resumir
+
+const PROMPT_RESUMO = `Você é um assistente que mantém o "diário" de uma campanha de RPG.
+Condense a história até agora num resumo curto e fiel (no máximo ~200 palavras), em português.
+Integre o resumo anterior (se houver) com os novos eventos, preservando: NPCs e suas relações,
+decisões importantes, segredos revelados, itens-chave e objetivos em aberto. Não invente nada.
+Responda apenas com o resumo, sem comentários.`;
 
 // RAG é best-effort: se o embedding/Ollama falhar, o jogo segue sem memória nova.
 async function recuperarLembrancas(campanha, consulta) {
@@ -32,6 +39,28 @@ async function indexarBeat(campanha, entradaJogador, narracao) {
   }
 }
 
+// Quando mensagens antigas (fora da janela recente) se acumulam além do limiar,
+// pede ao LLM pra condensá-las no resumo rolante. Roda só de tempos em tempos —
+// na maioria dos turnos não faz nada — pra não custar caro nem quebrar o cache.
+async function talvezResumir(campanha, provider) {
+  const corte = campanha.historico.length - MAX_CONTEXTO;
+  const inicio = campanha.resumo_ate || 0;
+  if (corte - inicio < LIMIAR_RESUMO) return;
+
+  const antigas = campanha.historico.slice(inicio, corte);
+  const entrada =
+    (campanha.resumo ? `Resumo anterior:\n${campanha.resumo}\n\n` : "") +
+    `Novos eventos:\n${antigas.map((m) => `${m.papel}: ${m.texto}`).join("\n")}`;
+
+  try {
+    const novo = await provider(PROMPT_RESUMO, [{ papel: "jogador", texto: entrada }]);
+    campanha.resumo = novo.trim();
+    campanha.resumo_ate = corte; // tudo até aqui já está no resumo
+  } catch {
+    /* best-effort: segue sem atualizar o resumo */
+  }
+}
+
 // Gera uma resposta do mestre a partir do estado atual. Não bloqueia esperando
 // rolagem: se a narração pedir um teste, ele volta em `teste` e quem chama decide
 // como coletar o dado (CLI no loop, web num segundo request). `personagens` é a
@@ -55,6 +84,8 @@ async function gerarTurno({ campanha, personagem, personagens, provider, promptB
 
   // A4: indexa o beat (ação do jogador + narração) pra memória de longo prazo.
   await indexarBeat(campanha, entradaJogador, textoNarracao);
+  // B1: de tempos em tempos, condensa a história antiga no resumo rolante.
+  await talvezResumir(campanha, provider);
 
   return { narracao: textoNarracao, teste, modificados: [...modificados] };
 }

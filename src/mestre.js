@@ -67,10 +67,20 @@ export function montarLembrancas(lembrancas) {
   ].join("\n");
 }
 
+// Resumo rolante da história ("história até agora"). Muda só a cada K turnos
+// (ver jogo.js), então é semi-estável — bom candidato a ficar no prefixo cacheável.
+export function montarResumo(c) {
+  if (!c.resumo) return "";
+  return `## História até agora\n${c.resumo}`;
+}
+
 // `lembrancas` chega PRONTA de quem chama (jogo.js faz a busca async antes), por
 // isso esta função continua síncrona.
 export function montarSystem(promptBase, ativo, c, personagens, lembrancas = []) {
-  const blocos = [promptBase, resumoEstado(ativo, c)];
+  const blocos = [promptBase];
+  const resumo = montarResumo(c);
+  if (resumo) blocos.push(resumo);
+  blocos.push(resumoEstado(ativo, c));
   const party = montarParty(personagens, ativo.id);
   if (party) blocos.push(party);
   const aventura = montarContextoAventura(c);
