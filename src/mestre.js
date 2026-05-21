@@ -55,12 +55,28 @@ export function montarParty(personagens, ativoId) {
   ].join("\n");
 }
 
-export function montarSystem(promptBase, ativo, c, personagens) {
+// Bloco DINÂMICO (muda a cada turno) com as lembranças recuperadas pelo RAG.
+// Fica por último no system — assim o prefixo estável (regras + notas) pode ser
+// cacheado depois (Fase C1) sem que estas linhas invalidem o cache.
+export function montarLembrancas(lembrancas) {
+  if (!lembrancas || lembrancas.length === 0) return "";
+  const linhas = lembrancas.map((l) => `- ${l.texto.replace(/\n/g, " ")}`);
+  return [
+    "## Lembranças de cenas passadas (use para manter a coerência da história)",
+    ...linhas,
+  ].join("\n");
+}
+
+// `lembrancas` chega PRONTA de quem chama (jogo.js faz a busca async antes), por
+// isso esta função continua síncrona.
+export function montarSystem(promptBase, ativo, c, personagens, lembrancas = []) {
   const blocos = [promptBase, resumoEstado(ativo, c)];
   const party = montarParty(personagens, ativo.id);
   if (party) blocos.push(party);
   const aventura = montarContextoAventura(c);
   if (aventura) blocos.push(aventura);
+  const mem = montarLembrancas(lembrancas);
+  if (mem) blocos.push(mem);
   return blocos.join("\n\n");
 }
 

@@ -58,6 +58,23 @@ Outras variáveis: `OLLAMA_MODEL` (padrão `llama3.1`), `ANTHROPIC_MODEL`
 Ao criar uma campanha, você preenche a sinopse e as notas do mestre (locais,
 NPCs, segredos, ganchos), que são injetadas no contexto da LLM a cada turno.
 
+## Memória de longo prazo (RAG)
+
+Como só as últimas mensagens vão no contexto, o mestre poderia "esquecer" cenas
+antigas numa campanha longa. Para evitar isso, cada turno é indexado num índice
+vetorial por campanha (`data/campanhas/<id>/indice.json`) e, antes de cada
+resposta, as cenas passadas mais relevantes são recuperadas por busca semântica
+e injetadas no prompt. É best-effort: se o embedding falhar, o jogo segue normal.
+
+Requer um modelo de embedding no Ollama (multilíngue, bom em pt-BR):
+
+```bash
+ollama pull bge-m3
+```
+
+Modelo via env `EMBED_MODEL` (padrão `bge-m3`). Os scripts em `estudos/` mostram
+embeddings e busca semântica passo a passo, para fins de estudo.
+
 ## Testes
 
 ```bash
