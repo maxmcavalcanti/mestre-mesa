@@ -74,6 +74,29 @@ export function montarResumo(c) {
   return `## História até agora\n${c.resumo}`;
 }
 
+// Lista o estado determinístico do mundo: NPCs conhecidos e flags. Vai na parte
+// dinâmica do system — é o que mantém a coerência (prevenção): o LLM lê daqui que
+// o ferreiro está morto, ou que a porta já está aberta, e narra de acordo.
+export function montarMundo(c) {
+  const partes = [];
+  const npcs = Object.values(c.npcs || {});
+  if (npcs.length) {
+    partes.push("NPCs conhecidos:");
+    for (const n of npcs) {
+      const det = [n.natureza, n.estado, n.disposicao].filter(Boolean).join(", ");
+      const local = n.local ? ` @ ${n.local}` : "";
+      const notas = n.notas ? ` — ${n.notas}` : "";
+      partes.push(`- [${n.id}] ${n.nome}${det ? ` (${det})` : ""}${local}${notas}`);
+    }
+  }
+  const flags = Object.entries(c.flags || {});
+  if (flags.length) {
+    partes.push("Estado do mundo:");
+    for (const [k, v] of flags) partes.push(`- ${k}: ${v}`);
+  }
+  return partes.length ? ["## Mundo", ...partes].join("\n") : "";
+}
+
 // `lembrancas` chega PRONTA de quem chama (jogo.js faz a busca async antes), por
 // isso esta função continua síncrona.
 //
@@ -92,6 +115,8 @@ export function montarSystem(promptBase, ativo, c, personagens, lembrancas = [])
   const dinamicos = [resumoEstado(ativo, c)];
   const party = montarParty(personagens, ativo.id);
   if (party) dinamicos.push(party);
+  const mundo = montarMundo(c);
+  if (mundo) dinamicos.push(mundo);
   const mem = montarLembrancas(lembrancas);
   if (mem) dinamicos.push(mem);
 
@@ -123,10 +148,29 @@ export function parseTags(texto) {
   return { narracao: narracao.join("\n").trim(), teste, estados };
 }
 
+const CAMPOS_NPC = ["nome", "natureza", "estado", "disposicao", "local", "notas"];
+
+// Cria o NPC sob demanda (entidades emergentes) com defaults sensatos.
+function garantirNpc(c, id) {
+  if (!c.npcs) c.npcs = {};
+  if (!c.npcs[id]) {
+    c.npcs[id] = {
+      id,
+      nome: id,
+      natureza: "",
+      estado: "ativo",
+      disposicao: "neutro",
+      local: "",
+      notas: "",
+    };
+  }
+  return c.npcs[id];
+}
+
 // Aplica as mudanças de estado. Ops de personagem (hp, inventario) afetam o
 // jogador ativo, ou outro personagem se a linha tiver 'alvo=<id>'. Ops de mundo
-// (local, quests) afetam a campanha. Devolve o conjunto de ids de personagens
-// modificados, pra quem chama saber o que persistir.
+// (local, quests, npc.*, flag.*) afetam a campanha. Devolve o conjunto de ids de
+// personagens modificados, pra quem chama saber o que persistir.
 export function aplicarEstado(estados, ativo, c, personagens = [ativo]) {
   const porId = new Map(personagens.filter((p) => p.id).map((p) => [p.id, p]));
   const modificados = new Set();
@@ -134,7 +178,7 @@ export function aplicarEstado(estados, ativo, c, personagens = [ativo]) {
   for (const bloco of estados) {
     let alvo = ativo;
     for (const seg of bloco.split(";")) {
-      const m = seg.trim().match(/^([\wçãáéíóú]+)\s*(\+=|-=|=)\s*(.+)$/i);
+      const m = seg.trim().match(/^([\w.çãáéíóú]+)\s*(\+=|-=|=)\s*(.+)$/i);
       if (!m) continue;
       const [, chaveRaw, op, valor] = m;
       const chave = chaveRaw.toLowerCase();
@@ -145,6 +189,15 @@ export function aplicarEstado(estados, ativo, c, personagens = [ativo]) {
           porId.get(val) ||
           personagens.find((p) => p.nome.toLowerCase() === val.toLowerCase());
         if (achado) alvo = achado;
+      } else if (chave.startsWith("npc.")) {
+        // npc.<id>.<campo>=valor — cria o NPC se ainda não existe.
+        const [, id, campo] = chave.split(".");
+        if (id && CAMPOS_NPC.includes(campo)) garantirNpc(c, id)[campo] = val;
+      } else if (chave.startsWith("flag.")) {
+        // flag.<chave>=valor — bag genérico de estado do mundo.
+        if (!c.flags) c.flags = {};
+        const nome = chave.slice("flag.".length);
+        if (nome) c.flags[nome] = val;
       } else if (chave === "hp") {
         const n = parseInt(val, 10);
         if (Number.isNaN(n)) continue;

@@ -7,6 +7,7 @@ import {
   montarContextoAventura,
   montarResumo,
   montarSystem,
+  montarMundo,
 } from "../src/mestre.js";
 
 test("parseTags separa narração de [TESTE]", () => {
@@ -90,6 +91,54 @@ test("montarResumo: vazio sem resumo, bloco com resumo", () => {
   const r = montarResumo({ resumo: "O herói achou a pedra branca." });
   assert.ok(r.includes("## História até agora"));
   assert.ok(r.includes("pedra branca"));
+});
+
+test("aplicarEstado cria e atualiza NPC (sob demanda)", () => {
+  const c = { local: "x", quests: [], npcs: {}, flags: {} };
+  const ativo = { id: "a", hp: 5, hp_max: 5, inventario: [] };
+  aplicarEstado(
+    ["npc.garrec.nome=Garrec; npc.garrec.natureza=humano; npc.garrec.estado=morto"],
+    ativo, c, [ativo],
+  );
+  assert.equal(c.npcs.garrec.nome, "Garrec");
+  assert.equal(c.npcs.garrec.natureza, "humano");
+  assert.equal(c.npcs.garrec.estado, "morto");
+  assert.equal(c.npcs.garrec.disposicao, "neutro"); // default
+
+  // reanimado: humano morto vira morto-vivo ativo
+  aplicarEstado(["npc.garrec.natureza=morto-vivo; npc.garrec.estado=ativo"], ativo, c, [ativo]);
+  assert.equal(c.npcs.garrec.natureza, "morto-vivo");
+  assert.equal(c.npcs.garrec.estado, "ativo");
+});
+
+test("aplicarEstado grava flags do mundo", () => {
+  const c = { local: "x", quests: [], npcs: {}, flags: {} };
+  const ativo = { id: "a", hp: 5, hp_max: 5, inventario: [] };
+  aplicarEstado(["flag.porta_cripta=aberta; flag.ritual=interrompido"], ativo, c, [ativo]);
+  assert.equal(c.flags.porta_cripta, "aberta");
+  assert.equal(c.flags.ritual, "interrompido");
+});
+
+test("aplicarEstado funciona em campanha antiga (sem npcs/flags) e não quebra hp", () => {
+  const c = { local: "x", quests: [] }; // sem npcs/flags (campanha migrada)
+  const ativo = { id: "a", hp: 10, hp_max: 10, inventario: ["adaga"] };
+  aplicarEstado(["npc.x.estado=ativo; flag.y=1; hp-=3; inventario+=tocha"], ativo, c, [ativo]);
+  assert.equal(c.npcs.x.estado, "ativo");
+  assert.equal(c.flags.y, "1");
+  assert.equal(ativo.hp, 7); // regressão: hp continua funcionando
+  assert.deepEqual(ativo.inventario, ["adaga", "tocha"]);
+});
+
+test("montarMundo lista NPCs e flags", () => {
+  const bloco = montarMundo({
+    npcs: { garrec: { id: "garrec", nome: "Garrec", natureza: "morto-vivo", estado: "ativo", disposicao: "hostil", local: "cripta", notas: "" } },
+    flags: { porta_cripta: "aberta" },
+  });
+  assert.ok(bloco.includes("## Mundo"));
+  assert.ok(bloco.includes("Garrec"));
+  assert.ok(bloco.includes("morto-vivo"));
+  assert.ok(bloco.includes("porta_cripta: aberta"));
+  assert.equal(montarMundo({}), ""); // sem nada -> vazio
 });
 
 test("montarSystem separa prefixo estável (cacheável) de dinâmico", () => {

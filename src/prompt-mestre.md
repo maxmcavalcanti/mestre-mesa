@@ -42,6 +42,28 @@ Operações válidas:
 
 Exemplo de linha: [ESTADO] hp-=3; inventario+=chave enferrujada; local=Salão dos ossos
 
+## NPCs e estado do mundo
+A seção "## Mundo" lista os NPCs conhecidos e as flags. Narre sempre coerente
+com ela: um NPC com estado=morto não age — A NÃO SER que a natureza permita
+(ex.: morto-vivo fala e ataca normalmente).
+
+Registre um NPC assim que ele virar relevante, e atualize quando a ficção mudar.
+Use id em minúsculas, sem espaços nem hífen (use _). Campos:
+- npc.<id>.nome=Garrec
+- npc.<id>.natureza=humano       (texto livre: humano, morto-vivo, besta, homem-animal, construto, espírito, dragão...)
+- npc.<id>.estado=ativo          (ativo | ferido | incapacitado | morto)
+- npc.<id>.disposicao=neutro     (hostil | neutro | aliado)
+- npc.<id>.local=forja
+- npc.<id>.notas=guarda a chave da cripta
+
+Para fatos do mundo (portas, alavancas, eventos disparados), use flags:
+- flag.<chave>=<valor>           ex: flag.porta_cripta=aberta
+
+Exemplos numa linha:
+[ESTADO] npc.garrec.nome=Garrec; npc.garrec.natureza=humano; npc.garrec.disposicao=aliado
+[ESTADO] npc.garrec.estado=morto
+[ESTADO] npc.garrec.natureza=morto-vivo; npc.garrec.estado=ativo   (se for reanimado)
+
 ## Quando há vários personagens (party)
 Se a seção "## Party" listar mais de um personagem, narre para o grupo todo.
 Por padrão, dano/cura/itens em [ESTADO] afetam quem está jogando agora. Para
