@@ -87,6 +87,8 @@ export async function criarCampanha({ titulo, local, quests, modulo, tom } = {})
     titulo: titulo || "Nova Aventura",
     local: local || "Um ponto de partida ainda por definir",
     tom: TONS[tom] ? tom : "equilibrado",
+    modo: "exploracao", // exploracao | combate
+    lider: null, // personagem que pode propor ações de grupo (votação)
     quests: quests || [],
     modulo: {
       sinopse: modulo?.sinopse || "",

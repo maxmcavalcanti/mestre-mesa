@@ -28,6 +28,10 @@ const CSS = `
   .msg.sistema { background: #1c2026; border-left: 3px solid #6a7a8a; color: #b8c0c8; font-size: .85rem; text-align: center; }
   .modo.combate { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .8rem; padding: .5rem .8rem; border-radius: 8px; font-weight: 600; color: #e8c98a; background: #2a2418; border: 1px solid #5a4a2a; }
   .modo.combate button { font-size: .75rem; padding: .3rem .6rem; }
+  button.link { background: none; color: #c9a86a; padding: .15rem 0; font-size: .78rem; text-decoration: underline; font-weight: 500; }
+  .badge-lider { font-size: .9rem; }
+  .acao.votacao { background: #211f2c; border: 1px solid #4a4360; border-radius: 8px; padding: .7rem .9rem; }
+  .proposta-texto { font-style: italic; margin: .3rem 0 .5rem; }
   .acao.teste { background: #211f2c; border: 1px solid #4a4360; border-radius: 8px; padding: .7rem .9rem; }
   .acao.teste label { color: #e6e3df; font-size: 1rem; }
   .card { background: #1d1b26; border: 1px solid #322e3f; border-radius: 8px; padding: .8rem; margin-bottom: .8rem; }

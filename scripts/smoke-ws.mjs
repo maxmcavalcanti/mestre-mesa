@@ -103,9 +103,40 @@ try {
   const painelCombate = await recebe("painel");
   if (!/Combate/.test(painelCombate.html))
     throw new Error("entrada em combate não refletiu no painel (sem banner de combate)");
-
   ws.close();
-  console.log("SMOKE OK: painel inicial + push pós-ação + entrada em combate pelo WebSocket");
+
+  // --- votação (fatia C), via HTTP: a resposta do /voto que resolve já traz o
+  // painel resolvido, então não precisa do WS aqui. ---
+  const form = (campos) => ({
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", "HX-Request": "true", cookie },
+    body: new URLSearchParams(campos),
+  });
+  // volta pra exploração (encerra o combate iniciado acima)
+  await fetch(base + `/campanhas/${id}/encerrar-combate`, form({}));
+  // cria a 2ª personagem (não-HTMX seta o cookie dela)
+  const rLia = await fetch(base + `/campanhas/${id}/personagens`, {
+    method: "POST", redirect: "manual",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ nome: "Lia", classe: "Guerreira", hp: "12" }),
+  });
+  const cookieLia = rLia.headers.get("set-cookie").split(";")[0];
+
+  // o líder (Bek) propõe ao grupo
+  const propHtml = await (await fetch(base + `/campanhas/${id}/propor`, form({ entrada: "seguimos juntos" }))).text();
+  if (!/Resolver agora|prop.e ao grupo/.test(propHtml))
+    throw new Error("proposta de grupo não foi criada");
+
+  // a outra (Lia) discorda -> todos votaram -> resolve -> a vez passa pra Lia
+  const votoHtml = await (await fetch(base + `/campanhas/${id}/voto`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", "HX-Request": "true", cookie: cookieLia },
+    body: new URLSearchParams({ valor: "nao" }),
+  })).text();
+  if (!/Lia/.test(votoHtml) || !/faz\?/.test(votoHtml))
+    throw new Error("resolução/fila individual não passou a vez ao dissidente");
+
+  console.log("SMOKE OK: WebSocket (painel/stream/combate) + votação com fila individual");
 } catch (e) {
   falhou = e;
   console.error("SMOKE FALHOU:", e.message);

@@ -2,9 +2,10 @@ import { modificador, comSinal, ATRIBUTOS } from "../dominio/modificadores.js";
 import { questTexto, questEstado } from "../dominio/protocolo.js";
 import { retratoClasse } from "../dominio/retratos.js";
 import { podeDesfazer } from "../dominio/desfazer.js";
+import { liderEfetivo, placar } from "../dominio/votacao.js";
 import { esc } from "./layout.js";
 
-function cardPersonagem(p, ativoId, campanhaId, emCombate) {
+function cardPersonagem(p, ativoId, campanhaId, emCombate, liderId) {
   const atrib = ATRIBUTOS.map(
     (a) => `<span>${a.slice(0, 3)} ${comSinal(modificador(p.atributos[a] ?? 10))}</span>`,
   ).join("");
@@ -18,6 +19,16 @@ function cardPersonagem(p, ativoId, campanhaId, emCombate) {
            <input type="hidden" name="turno_de" value="${esc(p.id)}">
            <button class="sec" type="submit">Passar a vez</button>
          </form>`;
+  const ehLider = p.id === liderId;
+  const badgeLider = ehLider ? ` <span class="badge-lider" title="líder do grupo">👑</span>` : "";
+  // "tornar líder" só em exploração e nos cards que não são o líder atual.
+  const botaoLider =
+    !ehLider && !emCombate
+      ? `<form hx-post="/campanhas/${esc(campanhaId)}/lider" hx-target="#painel" hx-swap="outerHTML" style="display:inline">
+           <input type="hidden" name="lider" value="${esc(p.id)}">
+           <button class="link" type="submit">tornar líder</button>
+         </form>`
+      : "";
   const cond = p.condicoes?.length
     ? `<div class="meta">Condições: ${esc(p.condicoes.join(", "))}</div>`
     : "";
@@ -25,7 +36,7 @@ function cardPersonagem(p, ativoId, campanhaId, emCombate) {
     <div class="cab">
       <div class="retrato" aria-hidden="true">${retratoClasse(p.classe)}</div>
       <div>
-        <h3>${esc(p.nome)}</h3>
+        <h3>${esc(p.nome)}${badgeLider}</h3>
         <div class="meta">${esc(p.classe)} • nível ${p.nivel} • HP ${p.hp}/${p.hp_max}</div>
       </div>
     </div>
@@ -33,6 +44,7 @@ function cardPersonagem(p, ativoId, campanhaId, emCombate) {
     <div class="meta">Itens: ${esc(p.inventario.join(", ") || "—")}</div>
     ${cond}
     ${botaoVez}
+    ${botaoLider}
   </div>`;
 }
 
@@ -78,7 +90,44 @@ function blocoMundo(campanha) {
   );
 }
 
-function areaAcao(campanha, ativo, eu) {
+// Painel de votação (exploração): proposta do líder + placar + voto/resolver.
+function blocoVotacao(campanha, personagens, eu) {
+  const prop = campanha.proposta;
+  const id = esc(campanha.id);
+  const nome = (pid) => personagens.find((p) => p.id === pid)?.nome || pid;
+  const p = placar(prop, personagens);
+  const lider = liderEfetivo(campanha, personagens);
+  const meuVoto = prop.votos[eu];
+  const placarTxt = `${p.sim.length} a favor · ${p.nao.length} contra · ${p.pendente.length} sem votar`;
+
+  let acao;
+  if (eu === lider) {
+    acao = `<form hx-post="/campanhas/${id}/resolver" hx-target="#painel" hx-swap="outerHTML">
+      <button type="submit">Resolver agora</button>
+    </form>`;
+  } else if (personagens.some((x) => x.id === eu) && !meuVoto) {
+    acao = `<div class="linha">
+      <form hx-post="/campanhas/${id}/voto" hx-target="#painel" hx-swap="outerHTML"><input type="hidden" name="valor" value="sim"><button type="submit">Concordo</button></form>
+      <form hx-post="/campanhas/${id}/voto" hx-target="#painel" hx-swap="outerHTML"><input type="hidden" name="valor" value="nao"><button class="sec" type="submit">Discordo (ajo sozinho)</button></form>
+    </div>`;
+  } else if (meuVoto) {
+    acao = `<div class="meta">Você votou: <strong>${meuVoto === "sim" ? "concordo" : "discordo"}</strong>. Aguardando os demais…</div>`;
+  } else {
+    acao = `<div class="meta">Aguardando a votação do grupo…</div>`;
+  }
+
+  return `<div class="acao votacao">
+    <div class="quem">${esc(nome(prop.autor))} propõe ao grupo:</div>
+    <div class="proposta-texto">“${esc(prop.texto)}”</div>
+    <div class="meta">${esc(placarTxt)}</div>
+    ${acao}
+  </div>`;
+}
+
+function areaAcao(campanha, personagens, ativo, eu) {
+  // Votação em curso tem prioridade sobre a ação individual.
+  if (campanha.proposta) return blocoVotacao(campanha, personagens, eu);
+
   const minhaVez = eu && ativo && eu === ativo.id;
   if (!minhaVez) {
     if (!ativo)
@@ -102,11 +151,17 @@ function areaAcao(campanha, ativo, eu) {
       </div>
     </form>`;
   }
+  // Ação individual. Em exploração, o líder ganha "Propor ao grupo" (votação).
+  const ehLider = campanha.modo !== "combate" && eu === liderEfetivo(campanha, personagens);
+  const propor = ehLider
+    ? `<button type="button" class="sec" hx-post="/campanhas/${esc(campanha.id)}/propor" hx-include="closest .acao" hx-target="#painel" hx-swap="outerHTML">Propor ao grupo</button>`
+    : "";
   return `<form class="acao" hx-post="/campanhas/${esc(campanha.id)}/turno" hx-target="#painel" hx-swap="outerHTML" hx-on::after-request="this.reset()">
     <label>O que <strong>${esc(ativo?.nome || "você")}</strong> faz?</label>
     <div class="linha">
       <input type="text" name="entrada" required autofocus autocomplete="off">
       <button type="submit">Agir</button>
+      ${propor}
     </div>
     <span class="htmx-indicator meta">o mestre está pensando…</span>
   </form>`;
@@ -163,7 +218,10 @@ export function painelJogo(campanha, personagens, eu, erro = null) {
   const ativo =
     personagens.find((p) => p.id === campanha.turno_de) || personagens[0] || null;
   const emCombate = campanha.modo === "combate";
-  const cards = personagens.map((p) => cardPersonagem(p, ativo?.id, campanha.id, emCombate)).join("");
+  const liderId = liderEfetivo(campanha, personagens);
+  const cards = personagens
+    .map((p) => cardPersonagem(p, ativo?.id, campanha.id, emCombate, liderId))
+    .join("");
   const minhaVez = eu && ativo && eu === ativo.id;
   // Banner de combate: rodada + botão de encerrar (rede de segurança).
   const banner = emCombate
@@ -187,7 +245,7 @@ export function painelJogo(campanha, personagens, eu, erro = null) {
       ${banner}
       <div class="log">${logHistorico(campanha.historico) || '<div class="meta">A aventura ainda não começou.</div>'}</div>
       ${aviso}
-      ${areaAcao(campanha, ativo, eu)}
+      ${areaAcao(campanha, personagens, ativo, eu)}
       ${desfazer}
     </div>
     <aside class="col-party">
