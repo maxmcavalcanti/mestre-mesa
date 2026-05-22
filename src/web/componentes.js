@@ -1,8 +1,6 @@
-import { modificador, comSinal } from "../dominio/modificadores.js";
+import { modificador, comSinal, ATRIBUTOS } from "../dominio/modificadores.js";
 import { questTexto, questEstado } from "../dominio/protocolo.js";
 import { esc } from "./layout.js";
-
-export const ATRIBUTOS = ["forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"];
 
 function cardPersonagem(p, ativoId, campanhaId) {
   const atrib = ATRIBUTOS.map(

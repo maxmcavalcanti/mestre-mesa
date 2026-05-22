@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { ATRIBUTOS } from "./dominio/modificadores.js";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dirCampanhas = join(raiz, "data", "campanhas");
@@ -111,14 +112,7 @@ export async function criarPersonagem(campanhaId, dados = {}) {
     nivel: dados.nivel || 1,
     hp: dados.hp ?? 12,
     hp_max: dados.hp_max ?? dados.hp ?? 12,
-    atributos: dados.atributos || {
-      forca: 10,
-      destreza: 10,
-      constituicao: 10,
-      inteligencia: 10,
-      sabedoria: 10,
-      carisma: 10,
-    },
+    atributos: dados.atributos || Object.fromEntries(ATRIBUTOS.map((a) => [a, 10])),
     inventario: dados.inventario || [],
     condicoes: dados.condicoes || [], // ex.: envenenado, atordoado
     tracos: dados.tracos || "",

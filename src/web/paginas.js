@@ -1,5 +1,6 @@
+import { ATRIBUTOS } from "../dominio/modificadores.js";
 import { layout, esc } from "./layout.js";
-import { ATRIBUTOS, painelJogo } from "./componentes.js";
+import { painelJogo } from "./componentes.js";
 
 export function paginaInicial(campanhas) {
   const itens =

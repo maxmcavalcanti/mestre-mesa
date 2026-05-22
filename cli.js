@@ -1,7 +1,7 @@
 import readline from "node:readline";
 import { stdin, stdout } from "node:process";
 
-import { lerPromptBase } from "./src/estado.js";
+import { ABERTURA, iniciar } from "./src/bootstrap.js";
 import {
   listarCampanhas,
   carregarCampanha,
@@ -11,12 +11,8 @@ import {
   criarPersonagem,
   salvarPersonagem,
 } from "./src/dados.js";
-import { criarProvider } from "./src/llm/provider.js";
 import { processarAcao, resolverRolagem } from "./src/jogo.js";
 import { comSinal, modificador } from "./src/dominio/modificadores.js";
-
-const ABERTURA =
-  "Comece a aventura: descreva a cena inicial em segunda pessoa e termine perguntando o que eu faço.";
 
 // Leitor de linha com fila: trata stdin canalizado (EOF) e interativo do mesmo jeito.
 const rl = readline.createInterface({ input: stdin });
@@ -77,8 +73,7 @@ async function escolherPersonagem(campanha) {
   return ativo;
 }
 
-const provider = criarProvider();
-const promptBase = await lerPromptBase();
+const { provider, promptBase } = await iniciar();
 
 const campanhaId = await escolherCampanha();
 const campanha = await carregarCampanha(campanhaId);

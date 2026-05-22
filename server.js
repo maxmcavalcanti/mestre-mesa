@@ -3,7 +3,7 @@ import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { lerPromptBase } from "./src/estado.js";
+import { ABERTURA, iniciar } from "./src/bootstrap.js";
 import {
   listarCampanhas,
   criarCampanha,
@@ -14,18 +14,13 @@ import {
   criarPersonagem,
   salvarPersonagem,
 } from "./src/dados.js";
-import { criarProvider } from "./src/llm/provider.js";
+import { ATRIBUTOS } from "./src/dominio/modificadores.js";
 import { processarAcao, resolverRolagem } from "./src/jogo.js";
 import { paginaInicial, paginaJogo, paginaEntrar } from "./src/web/paginas.js";
 import { painelJogo } from "./src/web/componentes.js";
 
-const ABERTURA =
-  "Comece a aventura: descreva a cena inicial em segunda pessoa e termine perguntando o que eu faço.";
-const ATRIBUTOS = ["forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"];
-
 const raiz = dirname(fileURLToPath(import.meta.url));
-const provider = criarProvider();
-const promptBase = await lerPromptBase();
+const { provider, promptBase } = await iniciar();
 
 const app = express();
 const PORTA = process.env.PORTA || 3000;

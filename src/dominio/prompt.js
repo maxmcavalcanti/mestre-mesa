@@ -1,14 +1,5 @@
-import { modificador, comSinal } from "./modificadores.js";
+import { modificador, comSinal, ATRIBUTOS } from "./modificadores.js";
 import { questTexto, questEstado } from "./protocolo.js";
-
-const ATRIBUTOS = [
-  "forca",
-  "destreza",
-  "constituicao",
-  "inteligencia",
-  "sabedoria",
-  "carisma",
-];
 
 // Resumo compacto do estado, injetado no system prompt a cada turno.
 export function resumoEstado(p, c) {

@@ -1,3 +1,14 @@
+// Os seis atributos de D&D 5e, na ordem canônica. Fonte única — prompt, web e
+// criação de personagem importam daqui em vez de repetir a lista.
+export const ATRIBUTOS = [
+  "forca",
+  "destreza",
+  "constituicao",
+  "inteligencia",
+  "sabedoria",
+  "carisma",
+];
+
 // Modificador padrão de D&D 5e: (atributo - 10) arredondado pra baixo, dividido por 2.
 export function modificador(score) {
   return Math.floor((score - 10) / 2);
