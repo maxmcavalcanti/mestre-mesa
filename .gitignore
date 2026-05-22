@@ -20,3 +20,6 @@ Thumbs.db
 
 # config local do Claude Code
 .claude/
+
+# notas de trabalho locais (roadmap/pendências) — não versionar
+docs/
