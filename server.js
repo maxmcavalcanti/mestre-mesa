@@ -13,6 +13,7 @@ import {
   listarPersonagens,
   criarPersonagem,
   salvarPersonagem,
+  comCampanha,
 } from "./src/dados.js";
 import { ATRIBUTOS } from "./src/dominio/modificadores.js";
 import { processarAcao, resolverRolagem } from "./src/jogo.js";
@@ -110,17 +111,20 @@ app.post("/campanhas/:id/personagens", async (req, res) => {
   const b = req.body;
   const atributos = {};
   for (const a of ATRIBUTOS) atributos[a] = parseInt(b[a], 10) || 10;
-  const novo = await criarPersonagem(id, {
-    nome: b.nome,
-    classe: b.classe,
-    hp: parseInt(b.hp, 10) || 12,
-    atributos,
+  const { novo, campanha, personagens } = await comCampanha(id, async () => {
+    const novo = await criarPersonagem(id, {
+      nome: b.nome,
+      classe: b.classe,
+      hp: parseInt(b.hp, 10) || 12,
+      atributos,
+    });
+    const { campanha, personagens } = await carregarSessao(id);
+    if (!campanha.turno_de && personagens[0]) {
+      campanha.turno_de = personagens[0].id;
+      await salvarCampanha(campanha);
+    }
+    return { novo, campanha, personagens };
   });
-  const { campanha, personagens } = await carregarSessao(id);
-  if (!campanha.turno_de && personagens[0]) {
-    campanha.turno_de = personagens[0].id;
-    await salvarCampanha(campanha);
-  }
   // Criado pela tela de entrada (não-HTMX): vira esse personagem e entra no jogo.
   if (!req.get("HX-Request")) {
     definirEu(res, id, novo.id);
@@ -131,33 +135,39 @@ app.post("/campanhas/:id/personagens", async (req, res) => {
 
 app.post("/campanhas/:id/vez", async (req, res) => {
   const id = req.params.id;
-  const { campanha, personagens } = await carregarSessao(id);
-  if (personagens.some((p) => p.id === req.body.turno_de)) {
-    campanha.turno_de = req.body.turno_de;
-    await salvarCampanha(campanha);
-  }
-  res.send(painelJogo(campanha, personagens, getEu(req, id)));
+  const html = await comCampanha(id, async () => {
+    const { campanha, personagens } = await carregarSessao(id);
+    if (personagens.some((p) => p.id === req.body.turno_de)) {
+      campanha.turno_de = req.body.turno_de;
+      await salvarCampanha(campanha);
+    }
+    return painelJogo(campanha, personagens, getEu(req, id));
+  });
+  res.send(html);
 });
 
 async function rodarTurno(req, res, id, fn) {
-  const { campanha, personagens, ativo } = await carregarSessao(id);
   const eu = getEu(req, id);
-  // Só o dispositivo do personagem da vez pode agir.
-  if (!ativo || eu !== ativo.id)
-    return res.send(painelJogo(campanha, personagens, eu));
-  try {
-    const r = await fn({ campanha, personagens, ativo });
-    campanha.teste_pendente = r.teste || null;
-    await persistir(campanha, personagens, r.modificados || []);
-  } catch (err) {
-    console.error(`[erro do mestre] ${err.message}`);
-    // Nada persistido: re-renderiza com o banner de erro pra quem agiu. O estado
-    // em memória (inclui a ação não-salva) some no próximo polling/ação.
-    return res.send(
-      painelJogo(campanha, personagens, eu, `O mestre tropeçou: ${err.message}. Tente de novo.`),
-    );
-  }
-  res.send(painelJogo(campanha, personagens, eu));
+  // Serializa o ciclo carregar→agir→salvar: dois requests na mesma campanha não
+  // se intercalam (a renderização é só montagem de string, fica dentro; o envio
+  // pela rede fica fora pra não segurar o lock durante I/O.)
+  const html = await comCampanha(id, async () => {
+    const { campanha, personagens, ativo } = await carregarSessao(id);
+    // Só o dispositivo do personagem da vez pode agir.
+    if (!ativo || eu !== ativo.id) return painelJogo(campanha, personagens, eu);
+    try {
+      const r = await fn({ campanha, personagens, ativo });
+      campanha.teste_pendente = r.teste || null;
+      await persistir(campanha, personagens, r.modificados || []);
+    } catch (err) {
+      console.error(`[erro do mestre] ${err.message}`);
+      // Nada persistido: banner de erro pra quem agiu. O estado em memória (inclui
+      // a ação não-salva) some no próximo polling/ação.
+      return painelJogo(campanha, personagens, eu, `O mestre tropeçou: ${err.message}. Tente de novo.`);
+    }
+    return painelJogo(campanha, personagens, eu);
+  });
+  res.send(html);
 }
 
 app.post("/campanhas/:id/comecar", async (req, res) => {

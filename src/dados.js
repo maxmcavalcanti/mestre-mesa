@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -28,8 +28,34 @@ async function lerJson(caminho) {
   return JSON.parse(await readFile(caminho, "utf8"));
 }
 
+// Escrita atômica: grava num arquivo temporário e renomeia por cima. O rename é
+// atômico no mesmo volume, então um leitor (ou um crash no meio) nunca vê um JSON
+// parcial — vê o conteúdo antigo ou o novo, nunca metade.
 async function salvarJson(caminho, dados) {
-  await writeFile(caminho, JSON.stringify(dados, null, 2) + "\n", "utf8");
+  const tmp = `${caminho}.${randomBytes(4).toString("hex")}.tmp`;
+  await writeFile(tmp, JSON.stringify(dados, null, 2) + "\n", "utf8");
+  await rename(tmp, caminho);
+}
+
+// ---- Serialização por campanha ----
+// Uma fila (corrente de promises) por id de campanha: tarefas na MESMA campanha
+// rodam uma de cada vez, então um ciclo carregar→mutar→salvar termina inteiro
+// antes do próximo começar. Sem isso, dois requests concorrentes (dois
+// dispositivos, ou passar-a-vez correndo com uma ação) leem o mesmo estado e a
+// última escrita sobrescreve a outra (lost update). Campanhas diferentes seguem
+// em paralelo.
+const filas = new Map();
+
+export function comCampanha(id, tarefa) {
+  const anterior = filas.get(id) || Promise.resolve();
+  const atual = anterior.then(() => tarefa());
+  // A cauda engole o erro pra não travar a fila; quem chamou recebe o erro real.
+  const cauda = atual.catch(() => {});
+  filas.set(id, cauda);
+  cauda.then(() => {
+    if (filas.get(id) === cauda) filas.delete(id); // limpa quando a fila esvazia
+  });
+  return atual;
 }
 
 const dirCampanha = (id) => join(dirCampanhas, id);
