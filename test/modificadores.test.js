@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { modificador, comSinal, normalizaAtributo } from "../src/modificadores.js";
+import { modificador, comSinal, normalizaAtributo } from "../src/dominio/modificadores.js";
 
 test("modificador segue a regra do d20 (5e)", () => {
   assert.equal(modificador(10), 0);

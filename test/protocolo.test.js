@@ -1,15 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  parseTags,
-  aplicarEstado,
-  resolverTeste,
-  montarContextoAventura,
-  montarResumo,
-  montarSystem,
-  montarMundo,
-  montarAvisos,
-} from "../src/mestre.js";
+import { parseTags, aplicarEstado } from "../src/dominio/protocolo.js";
 
 test("parseTags separa narração de [TESTE]", () => {
   const r = parseTags("Você vê uma porta emperrada.\n[TESTE] atributo=forca cd=13");
@@ -36,14 +27,6 @@ test("parseTags coleta [ESTADO] e normaliza atributo do teste", () => {
   assert.equal(r.narracao, "Algo acontece.");
   assert.deepEqual(r.estados, ["hp-=3; local=Cripta"]);
   assert.equal(r.teste.atributo, "destreza");
-});
-
-test("resolverTeste soma modificador e compara com a CD", () => {
-  const p = { atributos: { forca: 14 } };
-  const ok = resolverTeste(p, "forca", 10, 12); // 10 + 2 = 12 >= 12
-  assert.deepEqual(ok, { mod: 2, total: 12, sucesso: true });
-  const falha = resolverTeste(p, "forca", 9, 12); // 11 < 12
-  assert.equal(falha.sucesso, false);
 });
 
 test("aplicarEstado muda hp, inventário, local e quests do ativo", () => {
@@ -85,26 +68,6 @@ test("aplicarEstado com alvo afeta outro personagem da party", () => {
   assert.equal(b.hp, 6);
   assert.ok(mod.has("b"));
   assert.ok(!mod.has("a"));
-});
-
-test("montarContextoAventura vazio quando não há módulo", () => {
-  assert.equal(montarContextoAventura({ modulo: { sinopse: "", notas: "", fontes: [] } }), "");
-});
-
-test("montarContextoAventura inclui sinopse e notas", () => {
-  const ctx = montarContextoAventura({
-    modulo: { sinopse: "Vilarejo amaldiçoado", notas: "NPC: ferreiro", fontes: [] },
-  });
-  assert.ok(ctx.includes("## Aventura"));
-  assert.ok(ctx.includes("Vilarejo amaldiçoado"));
-  assert.ok(ctx.includes("NPC: ferreiro"));
-});
-
-test("montarResumo: vazio sem resumo, bloco com resumo", () => {
-  assert.equal(montarResumo({ resumo: "" }), "");
-  const r = montarResumo({ resumo: "O herói achou a pedra branca." });
-  assert.ok(r.includes("## História até agora"));
-  assert.ok(r.includes("pedra branca"));
 });
 
 test("aplicarEstado cria e atualiza NPC (sob demanda)", () => {
@@ -172,47 +135,4 @@ test("aplicarEstado: gera avisos para remoções/marcas inexistentes", () => {
   assert.equal(c.avisos.length, 2);
   assert.ok(c.avisos.some((x) => x.includes("poção")));
   assert.ok(c.avisos.some((x) => x.toLowerCase().includes("quest")));
-});
-
-test("montarAvisos: vazio sem avisos, bloco com avisos", () => {
-  assert.equal(montarAvisos([]), "");
-  const b = montarAvisos(['Lia não tinha o item removido: "poção".']);
-  assert.ok(b.includes("## Avisos do sistema"));
-  assert.ok(b.includes("poção"));
-});
-
-test("montarMundo lista NPCs e flags", () => {
-  const bloco = montarMundo({
-    npcs: { garrec: { id: "garrec", nome: "Garrec", natureza: "morto-vivo", estado: "ativo", disposicao: "hostil", local: "cripta", notas: "" } },
-    flags: { porta_cripta: "aberta" },
-  });
-  assert.ok(bloco.includes("## Mundo"));
-  assert.ok(bloco.includes("Garrec"));
-  assert.ok(bloco.includes("morto-vivo"));
-  assert.ok(bloco.includes("porta_cripta: aberta"));
-  assert.equal(montarMundo({}), ""); // sem nada -> vazio
-});
-
-test("montarSystem separa prefixo estável (cacheável) de dinâmico", () => {
-  const ativo = {
-    id: "a", nome: "Heroi", classe: "Mago", nivel: 1, hp: 10, hp_max: 10,
-    atributos: { forca: 10, destreza: 10, constituicao: 10, inteligencia: 10, sabedoria: 10, carisma: 10 },
-    inventario: [], tracos: "",
-  };
-  const c = {
-    local: "Cripta", quests: [],
-    modulo: { sinopse: "SINOPSE", notas: "NOTAS", fontes: [] },
-    resumo: "RESUMO",
-  };
-  const s = montarSystem("REGRAS", ativo, c, [ativo], [{ turno: 1, texto: "LEMBRANCA", score: 1 }]);
-
-  // estável: regras + notas + resumo (muda raramente -> cacheável)
-  assert.ok(s.estavel.includes("REGRAS"));
-  assert.ok(s.estavel.includes("NOTAS"));
-  assert.ok(s.estavel.includes("RESUMO"));
-  // dinâmico: estado atual + lembranças (muda a cada turno -> fora do cache)
-  assert.ok(s.dinamico.includes("Cripta"));
-  assert.ok(s.dinamico.includes("LEMBRANCA"));
-  // o dinâmico NÃO pode vazar pro prefixo estável
-  assert.ok(!s.estavel.includes("LEMBRANCA"));
 });

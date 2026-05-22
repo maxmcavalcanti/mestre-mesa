@@ -13,7 +13,7 @@ import {
 } from "./src/dados.js";
 import { criarProvider } from "./src/llm/provider.js";
 import { processarAcao, resolverRolagem } from "./src/jogo.js";
-import { comSinal, modificador } from "./src/modificadores.js";
+import { comSinal, modificador } from "./src/dominio/modificadores.js";
 
 const ABERTURA =
   "Comece a aventura: descreva a cena inicial em segunda pessoa e termine perguntando o que eu faço.";

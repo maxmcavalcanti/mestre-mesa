@@ -1,5 +1,7 @@
-import { montarSystem, parseTags, aplicarEstado, resolverTeste } from "./mestre.js";
-import { comSinal } from "./modificadores.js";
+import { montarSystem } from "./dominio/prompt.js";
+import { parseTags, aplicarEstado } from "./dominio/protocolo.js";
+import { resolverTeste } from "./dominio/regras.js";
+import { comSinal } from "./dominio/modificadores.js";
 import { indexar, buscar } from "./memoria.js";
 
 const MAX_CONTEXTO = 16; // quantas mensagens recentes mandar pro LLM por turno
