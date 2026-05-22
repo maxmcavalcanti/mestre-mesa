@@ -16,12 +16,8 @@ import {
 } from "./src/dados.js";
 import { criarProvider } from "./src/llm/provider.js";
 import { processarAcao, resolverRolagem } from "./src/jogo.js";
-import {
-  paginaInicial,
-  paginaJogo,
-  paginaEntrar,
-  painelJogo,
-} from "./src/web/render.js";
+import { paginaInicial, paginaJogo, paginaEntrar } from "./src/web/paginas.js";
+import { painelJogo } from "./src/web/componentes.js";
 
 const ABERTURA =
   "Comece a aventura: descreva a cena inicial em segunda pessoa e termine perguntando o que eu faço.";

@@ -1,0 +1,172 @@
+import { modificador, comSinal } from "../dominio/modificadores.js";
+import { questTexto, questEstado } from "../dominio/protocolo.js";
+import { esc } from "./layout.js";
+
+export const ATRIBUTOS = ["forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"];
+
+function cardPersonagem(p, ativoId, campanhaId) {
+  const atrib = ATRIBUTOS.map(
+    (a) => `<span>${a.slice(0, 3)} ${comSinal(modificador(p.atributos[a] ?? 10))}</span>`,
+  ).join("");
+  const botaoVez =
+    p.id === ativoId
+      ? `<span class="meta">jogando agora</span>`
+      : `<form hx-post="/campanhas/${esc(campanhaId)}/vez" hx-target="#painel" hx-swap="outerHTML">
+           <input type="hidden" name="turno_de" value="${esc(p.id)}">
+           <button class="sec" type="submit">Passar a vez</button>
+         </form>`;
+  const cond = p.condicoes?.length
+    ? `<div class="meta">Condições: ${esc(p.condicoes.join(", "))}</div>`
+    : "";
+  return `<div class="card ${p.id === ativoId ? "ativo" : ""}">
+    <h3>${esc(p.nome)}</h3>
+    <div class="meta">${esc(p.classe)} • nível ${p.nivel} • HP ${p.hp}/${p.hp_max}</div>
+    <div class="atributos">${atrib}</div>
+    <div class="meta">Itens: ${esc(p.inventario.join(", ") || "—")}</div>
+    ${cond}
+    ${botaoVez}
+  </div>`;
+}
+
+// Missões com estado: concluídas riscadas, falhas em destaque.
+function blocoMissoes(campanha) {
+  const quests = campanha.quests || [];
+  if (!quests.length) return "";
+  const icone = { ativa: "•", concluida: "✓", falhou: "✗" };
+  const itens = quests
+    .map((q) => {
+      const est = questEstado(q);
+      const estilo =
+        est === "concluida"
+          ? "opacity:.55;text-decoration:line-through"
+          : est === "falhou"
+            ? "opacity:.7;color:#c98a8a"
+            : "";
+      return `<li style="${estilo}">${icone[est] || "•"} ${esc(questTexto(q))}</li>`;
+    })
+    .join("");
+  return `<h2 style="font-size:1rem">Missões</h2><ul class="lista">${itens}</ul>`;
+}
+
+// Estado determinístico do mundo: NPCs conhecidos + flags.
+function blocoMundo(campanha) {
+  const npcs = Object.values(campanha.npcs || {});
+  const flags = Object.entries(campanha.flags || {});
+  if (!npcs.length && !flags.length) return "";
+  const npcItens = npcs
+    .map((n) => {
+      const det = [n.natureza, n.estado, n.disposicao].filter(Boolean).join(" · ");
+      const local = n.local ? ` <span class="meta">@ ${esc(n.local)}</span>` : "";
+      return `<li><strong>${esc(n.nome)}</strong>${det ? ` <span class="meta">(${esc(det)})</span>` : ""}${local}</li>`;
+    })
+    .join("");
+  const flagItens = flags
+    .map(([k, v]) => `<li class="meta">${esc(k)}: ${esc(v)}</li>`)
+    .join("");
+  return (
+    `<h2 style="font-size:1rem">Mundo</h2>` +
+    (npcItens ? `<ul class="lista">${npcItens}</ul>` : "") +
+    (flagItens ? `<ul class="lista">${flagItens}</ul>` : "")
+  );
+}
+
+function areaAcao(campanha, ativo, eu) {
+  const minhaVez = eu && ativo && eu === ativo.id;
+  if (!minhaVez) {
+    if (!ativo)
+      return `<div class="acao meta">Crie um personagem para começar.</div>`;
+    return `<div class="acao meta">⏳ Aguardando <strong>${esc(ativo.nome)}</strong> agir…</div>`;
+  }
+  if (campanha.historico.length === 0) {
+    return `<form class="acao" hx-post="/campanhas/${esc(campanha.id)}/comecar" hx-target="#painel" hx-swap="outerHTML">
+      <button type="submit">Começar a aventura</button>
+    </form>`;
+  }
+  if (campanha.teste_pendente) {
+    const t = campanha.teste_pendente;
+    const mod = modificador(ativo?.atributos?.[t.atributo] ?? 10);
+    return `<form class="acao teste" hx-post="/campanhas/${esc(campanha.id)}/rolagem" hx-target="#painel" hx-swap="outerHTML">
+      <label>🎲 Teste de <strong>${esc(t.atributo)}</strong> · CD ${t.cd}</label>
+      <div class="meta">Role um d20 na mesa e digite o resultado. Seu modificador de ${esc(t.atributo)} (${comSinal(mod)}) é somado automaticamente.</div>
+      <div class="linha">
+        <input type="number" name="dado" min="1" max="20" required autofocus placeholder="d20">
+        <button type="submit">Rolar</button>
+      </div>
+    </form>`;
+  }
+  return `<form class="acao" hx-post="/campanhas/${esc(campanha.id)}/turno" hx-target="#painel" hx-swap="outerHTML" hx-on::after-request="this.reset()">
+    <label>O que <strong>${esc(ativo?.nome || "você")}</strong> faz?</label>
+    <div class="linha">
+      <input type="text" name="entrada" required autofocus autocomplete="off">
+      <button type="submit">Agir</button>
+    </div>
+    <span class="htmx-indicator meta">o mestre está pensando…</span>
+  </form>`;
+}
+
+function logHistorico(historico) {
+  const blocos = [];
+  for (const m of historico) {
+    if (m.papel === "mestre") {
+      blocos.push(`<div class="msg mestre"><div class="quem">Mestre</div>${esc(m.texto)}</div>`);
+    } else if (m.texto.startsWith("Resultado do teste")) {
+      const txt = m.texto.replace(/\.\s*Narre.*$/i, "");
+      const ok = /\(sucesso\)/i.test(txt);
+      blocos.push(
+        `<div class="dado ${ok ? "ok" : "fail"}">🎲 ${esc(txt)} ${ok ? "✓" : "✗"}</div>`,
+      );
+    } else if (m.texto.startsWith("Comece a aventura")) {
+      // semente da abertura — não mostra
+    } else {
+      blocos.push(`<div class="msg jogador"><div class="quem">Jogador</div>${esc(m.texto)}</div>`);
+    }
+  }
+  return blocos.join("");
+}
+
+function formNovoPersonagem(campanhaId) {
+  const campos = ATRIBUTOS.map(
+    (a) =>
+      `<label>${a.slice(0, 3)}<input type="number" name="${a}" value="10" min="1" max="20"></label>`,
+  ).join("");
+  return `<details>
+    <summary>+ Novo personagem</summary>
+    <form class="card" hx-post="/campanhas/${esc(campanhaId)}/personagens" hx-target="#painel" hx-swap="outerHTML">
+      <label>Nome</label><input type="text" name="nome" required>
+      <label>Classe</label><input type="text" name="classe" value="Andarilho">
+      <label>HP</label><input type="number" name="hp" value="12" min="1">
+      <label>Atributos</label>
+      <div class="grid6">${campos}</div>
+      <div style="margin-top:.6rem"><button type="submit">Criar personagem</button></div>
+    </form>
+  </details>`;
+}
+
+// Fragmento trocável pelo HTMX: log + party + área de ação. `eu` é o id do
+// personagem que ESTE dispositivo controla ('tela' = só assistindo, null = sem
+// identidade). O polling (every 3s) só é injetado quando NÃO é a vez deste
+// dispositivo, pra não apagar o input de quem está agindo.
+export function painelJogo(campanha, personagens, eu) {
+  const ativo =
+    personagens.find((p) => p.id === campanha.turno_de) || personagens[0] || null;
+  const cards = personagens.map((p) => cardPersonagem(p, ativo?.id, campanha.id)).join("");
+  const minhaVez = eu && ativo && eu === ativo.id;
+  const poll = minhaVez
+    ? ""
+    : `<div hx-get="/campanhas/${esc(campanha.id)}/painel" hx-trigger="every 3s" hx-target="#painel" hx-swap="outerHTML" style="display:none"></div>`;
+
+  return `<div id="painel" class="jogo">
+    <div class="col-log">
+      <div class="log">${logHistorico(campanha.historico) || '<div class="meta">A aventura ainda não começou.</div>'}</div>
+      ${areaAcao(campanha, ativo, eu)}
+    </div>
+    <aside class="col-party">
+      <h2 style="font-size:1rem">Party</h2>
+      ${cards || '<div class="meta">Nenhum personagem ainda.</div>'}
+      ${formNovoPersonagem(campanha.id)}
+      ${blocoMissoes(campanha)}
+      ${blocoMundo(campanha)}
+    </aside>
+    ${poll}
+  </div>`;
+}
