@@ -17,6 +17,7 @@ import {
 } from "./src/dados.js";
 import { ATRIBUTOS } from "./src/dominio/modificadores.js";
 import { processarAcao, resolverRolagem } from "./src/jogo.js";
+import { instantaneo, restaurar } from "./src/dominio/desfazer.js";
 import { paginaInicial, paginaJogo, paginaEntrar } from "./src/web/paginas.js";
 import { painelJogo } from "./src/web/componentes.js";
 
@@ -156,9 +157,14 @@ async function rodarTurno(req, res, id, fn) {
     const { campanha, personagens, ativo } = await carregarSessao(id);
     // Só o dispositivo do personagem da vez pode agir.
     if (!ativo || eu !== ativo.id) return painelJogo(campanha, personagens, eu);
+    const snap = instantaneo(campanha, personagens); // estado antes do turno
+    const tamHist = campanha.historico.length;
     try {
       const r = await fn({ campanha, personagens, ativo });
       campanha.teste_pendente = r.teste || null;
+      // Só registra o ponto de desfazer se um turno de fato rolou (o histórico
+      // cresceu); branches no-op (sem ação / entrada vazia) não viram snapshot.
+      if (campanha.historico.length > tamHist) campanha.desfazer = snap;
       await persistir(campanha, personagens, r.modificados || []);
     } catch (err) {
       console.error(`[erro do mestre] ${err.message}`);
@@ -215,6 +221,23 @@ app.post("/campanhas/:id/rolagem", async (req, res) => {
       promptBase,
     });
   });
+});
+
+// Desfaz o último turno: restaura o instantâneo salvo antes dele. Só o
+// dispositivo do personagem da vez (quem gerou o beat) pode desfazer.
+app.post("/campanhas/:id/desfazer", async (req, res) => {
+  const id = req.params.id;
+  const eu = getEu(req, id);
+  const html = await comCampanha(id, async () => {
+    const { campanha, personagens, ativo } = await carregarSessao(id);
+    const restaurado = restaurar(campanha);
+    if (!ativo || eu !== ativo.id || !restaurado)
+      return painelJogo(campanha, personagens, eu);
+    await salvarCampanha(restaurado.campanha);
+    for (const p of restaurado.personagens) await salvarPersonagem(id, p);
+    return painelJogo(restaurado.campanha, restaurado.personagens, eu);
+  });
+  res.send(html);
 });
 
 // Rede de segurança: nada de derrubar o servidor por um erro de rota.

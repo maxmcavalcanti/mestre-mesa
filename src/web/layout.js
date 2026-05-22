@@ -58,6 +58,8 @@ const CSS = `
   .htmx-indicator { opacity: 0; transition: opacity .2s; }
   .htmx-request .htmx-indicator { opacity: 1; }
   .erro { margin-top: 1rem; padding: .6rem .9rem; border-radius: 8px; font-size: .9rem; color: #d6a9a9; background: #2a1c1c; border-left: 3px solid #a05a5a; }
+  .desfazer { margin-top: .6rem; text-align: right; }
+  .desfazer button { font-size: .8rem; padding: .35rem .7rem; opacity: .8; }
 
   /* Celular: empilha em uma coluna e deixa a página rolar naturalmente. */
   @media (max-width: 720px) {

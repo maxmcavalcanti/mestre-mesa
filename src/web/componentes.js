@@ -1,6 +1,7 @@
 import { modificador, comSinal, ATRIBUTOS } from "../dominio/modificadores.js";
 import { questTexto, questEstado } from "../dominio/protocolo.js";
 import { retratoClasse } from "../dominio/retratos.js";
+import { podeDesfazer } from "../dominio/desfazer.js";
 import { esc } from "./layout.js";
 
 function cardPersonagem(p, ativoId, campanhaId) {
@@ -161,12 +162,20 @@ export function painelJogo(campanha, personagens, eu, erro = null) {
     ? ""
     : `<div hx-get="/campanhas/${esc(campanha.id)}/painel" hx-trigger="every 3s" hx-target="#painel" hx-swap="outerHTML" style="display:none"></div>`;
   const aviso = erro ? `<div class="erro">⚠️ ${esc(erro)}</div>` : "";
+  // Desfazer só pra quem está na vez (gerou o beat) e quando há ponto salvo.
+  const desfazer =
+    minhaVez && podeDesfazer(campanha) && campanha.historico.length
+      ? `<form class="desfazer" hx-post="/campanhas/${esc(campanha.id)}/desfazer" hx-target="#painel" hx-swap="outerHTML">
+           <button class="sec" type="submit">↩ Desfazer último turno</button>
+         </form>`
+      : "";
 
   return `<div id="painel" class="jogo">
     <div class="col-log">
       <div class="log">${logHistorico(campanha.historico) || '<div class="meta">A aventura ainda não começou.</div>'}</div>
       ${aviso}
       ${areaAcao(campanha, ativo, eu)}
+      ${desfazer}
     </div>
     <aside class="col-party">
       <h2 style="font-size:1rem">Party</h2>
