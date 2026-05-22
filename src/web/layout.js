@@ -205,6 +205,27 @@ export function layout({ titulo, corpo }) {
     });
     document.addEventListener('htmx:afterSwap', function () { sinalizarDigitando(false); });
 
+    // Eco otimista: ao enviar a ação/rolagem, mostra a própria mensagem no log na
+    // hora — senão a narração (streaming) chega antes da fala do jogador. O painel
+    // final (resposta do POST) substitui esta bolha pelo histórico de verdade.
+    document.addEventListener('htmx:beforeRequest', function (e) {
+      var form = (e.detail && e.detail.elt) || e.target;
+      if (!form || !form.matches || !form.matches('#painel .acao')) return;
+      var ent = form.querySelector('input[name="entrada"]');
+      var dado = form.querySelector('input[name="dado"]');
+      var texto = ent ? ent.value.trim() : (dado && dado.value ? ('🎲 rolei ' + dado.value) : '');
+      if (!texto) return;
+      var log = document.querySelector('#painel .log');
+      if (!log) return;
+      var b = document.createElement('div');
+      b.className = 'msg jogador';
+      var q = document.createElement('div'); q.className = 'quem'; q.textContent = 'Você';
+      b.appendChild(q);
+      b.appendChild(document.createTextNode(texto));
+      log.appendChild(b);
+      if (pertoDoFim()) rolarParaUltimo();
+    });
+
     conectar();
   })();
 </script>
