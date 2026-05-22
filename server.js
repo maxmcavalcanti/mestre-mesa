@@ -151,6 +151,11 @@ async function rodarTurno(req, res, id, fn) {
     await persistir(campanha, personagens, r.modificados || []);
   } catch (err) {
     console.error(`[erro do mestre] ${err.message}`);
+    // Nada persistido: re-renderiza com o banner de erro pra quem agiu. O estado
+    // em memória (inclui a ação não-salva) some no próximo polling/ação.
+    return res.send(
+      painelJogo(campanha, personagens, eu, `O mestre tropeçou: ${err.message}. Tente de novo.`),
+    );
   }
   res.send(painelJogo(campanha, personagens, eu));
 }

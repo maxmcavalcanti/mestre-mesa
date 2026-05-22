@@ -143,8 +143,10 @@ function formNovoPersonagem(campanhaId) {
 // Fragmento trocável pelo HTMX: log + party + área de ação. `eu` é o id do
 // personagem que ESTE dispositivo controla ('tela' = só assistindo, null = sem
 // identidade). O polling (every 3s) só é injetado quando NÃO é a vez deste
-// dispositivo, pra não apagar o input de quem está agindo.
-export function painelJogo(campanha, personagens, eu) {
+// dispositivo, pra não apagar o input de quem está agindo. `erro` é uma mensagem
+// transitória (turno que falhou): aparece só pra quem agiu, na resposta do POST,
+// e some no próximo polling/ação — não é persistida.
+export function painelJogo(campanha, personagens, eu, erro = null) {
   const ativo =
     personagens.find((p) => p.id === campanha.turno_de) || personagens[0] || null;
   const cards = personagens.map((p) => cardPersonagem(p, ativo?.id, campanha.id)).join("");
@@ -152,10 +154,12 @@ export function painelJogo(campanha, personagens, eu) {
   const poll = minhaVez
     ? ""
     : `<div hx-get="/campanhas/${esc(campanha.id)}/painel" hx-trigger="every 3s" hx-target="#painel" hx-swap="outerHTML" style="display:none"></div>`;
+  const aviso = erro ? `<div class="erro">⚠️ ${esc(erro)}</div>` : "";
 
   return `<div id="painel" class="jogo">
     <div class="col-log">
       <div class="log">${logHistorico(campanha.historico) || '<div class="meta">A aventura ainda não começou.</div>'}</div>
+      ${aviso}
       ${areaAcao(campanha, ativo, eu)}
     </div>
     <aside class="col-party">
