@@ -29,6 +29,16 @@ test("parseTags coleta [ESTADO] e normaliza atributo do teste", () => {
   assert.equal(r.teste.atributo, "destreza");
 });
 
+test("parseTags detecta [MODO] combate/exploracao e tira da narração", () => {
+  const c = parseTags("A criatura avança!\n[MODO] combate");
+  assert.equal(c.modo, "combate");
+  assert.equal(c.narracao, "A criatura avança!");
+  const e = parseTags("O inimigo cai. [MODO] exploracao");
+  assert.equal(e.modo, "exploracao");
+  assert.ok(!e.narracao.includes("[MODO]"));
+  assert.equal(parseTags("Nada de especial.").modo, null);
+});
+
 test("aplicarEstado muda hp, inventário, local e quests do ativo", () => {
   const p = { id: "a", hp: 10, hp_max: 12, inventario: ["adaga"] };
   const c = { local: "x", quests: [] };

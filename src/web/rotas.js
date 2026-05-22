@@ -11,6 +11,7 @@ import {
 import { ATRIBUTOS } from "../dominio/modificadores.js";
 import { processarAcao, resolverRolagem } from "../jogo.js";
 import { instantaneo, restaurar } from "../dominio/desfazer.js";
+import { avancarVez, encerrarCombate } from "../dominio/combate.js";
 import { paginaInicial, paginaJogo, paginaEntrar } from "./paginas.js";
 import { painelJogo } from "./componentes.js";
 import { difundirPainel, difundirPresenca } from "./difusao.js";
@@ -120,6 +121,7 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
       if (!ativo || eu !== ativo.id) return painelJogo(campanha, personagens, eu);
       const snap = instantaneo(campanha, personagens); // estado antes do turno
       const tamHist = campanha.historico.length;
+      const jaEmCombate = campanha.modo === "combate"; // antes do turno
       // Streaming: repassa a narração em pedaços pra sala. O 'stream-inicio' sai
       // no 1º token (se houver), então branches no-op não disparam nada.
       let abriu = false;
@@ -133,6 +135,12 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
         // Só registra o ponto de desfazer se um turno de fato rolou (o histórico
         // cresceu); branches no-op (sem ação / entrada vazia) não viram snapshot.
         if (campanha.historico.length > tamHist) campanha.desfazer = snap;
+        // Em combate: a vez avança sozinha quando a ação concluiu (sem teste
+        // pendente). Não avança no turno que INICIOU o combate (jaEmCombate=false):
+        // a iniciativa já pôs a vez no primeiro combatente.
+        if (jaEmCombate && campanha.modo === "combate" && !campanha.teste_pendente) {
+          avancarVez(campanha, personagens);
+        }
         await persistir(campanha, personagens, r.modificados || []);
         difundirPainel(sala, campanha, personagens); // turno resolvido pra todos
       } catch (err) {
@@ -193,6 +201,24 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
         onDelta,
       });
     });
+  });
+
+  // Encerra o combate manualmente (rede de segurança, caso o mestre esqueça a
+  // tag [MODO] exploracao). Qualquer jogador pode acionar.
+  app.post("/campanhas/:id/encerrar-combate", async (req, res) => {
+    const id = req.params.id;
+    const eu = getEu(req, id);
+    const html = await comCampanha(id, async () => {
+      const { campanha, personagens } = await carregarSessao(id);
+      if (campanha.modo === "combate") {
+        const msg = encerrarCombate(campanha, personagens);
+        campanha.historico.push({ papel: "sistema", texto: msg });
+        await salvarCampanha(campanha);
+        difundirPainel(sala, campanha, personagens);
+      }
+      return painelJogo(campanha, personagens, eu);
+    });
+    res.send(html);
   });
 
   // Desfaz o último turno: restaura o instantâneo salvo antes dele. Só o

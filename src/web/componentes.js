@@ -4,14 +4,17 @@ import { retratoClasse } from "../dominio/retratos.js";
 import { podeDesfazer } from "../dominio/desfazer.js";
 import { esc } from "./layout.js";
 
-function cardPersonagem(p, ativoId, campanhaId) {
+function cardPersonagem(p, ativoId, campanhaId, emCombate) {
   const atrib = ATRIBUTOS.map(
     (a) => `<span>${a.slice(0, 3)} ${comSinal(modificador(p.atributos[a] ?? 10))}</span>`,
   ).join("");
+  // Em combate a vez é automática (rodízio por iniciativa): sem "passar a vez".
   const botaoVez =
     p.id === ativoId
       ? `<span class="meta">jogando agora</span>`
-      : `<form hx-post="/campanhas/${esc(campanhaId)}/vez" hx-target="#painel" hx-swap="outerHTML">
+      : emCombate
+        ? `<span class="meta">${p.hp > 0 ? "aguardando" : "fora de combate"}</span>`
+        : `<form hx-post="/campanhas/${esc(campanhaId)}/vez" hx-target="#painel" hx-swap="outerHTML">
            <input type="hidden" name="turno_de" value="${esc(p.id)}">
            <button class="sec" type="submit">Passar a vez</button>
          </form>`;
@@ -112,7 +115,9 @@ function areaAcao(campanha, ativo, eu) {
 function logHistorico(historico) {
   const blocos = [];
   for (const m of historico) {
-    if (m.papel === "mestre") {
+    if (m.papel === "sistema") {
+      blocos.push(`<div class="msg sistema">${esc(m.texto)}</div>`);
+    } else if (m.papel === "mestre") {
       blocos.push(`<div class="msg mestre"><div class="quem">Mestre</div>${esc(m.texto)}</div>`);
     } else if (m.texto.startsWith("Resultado do teste")) {
       const txt = m.texto.replace(/\.\s*Narre.*$/i, "");
@@ -157,8 +162,17 @@ function formNovoPersonagem(campanhaId) {
 export function painelJogo(campanha, personagens, eu, erro = null) {
   const ativo =
     personagens.find((p) => p.id === campanha.turno_de) || personagens[0] || null;
-  const cards = personagens.map((p) => cardPersonagem(p, ativo?.id, campanha.id)).join("");
+  const emCombate = campanha.modo === "combate";
+  const cards = personagens.map((p) => cardPersonagem(p, ativo?.id, campanha.id, emCombate)).join("");
   const minhaVez = eu && ativo && eu === ativo.id;
+  // Banner de combate: rodada + botão de encerrar (rede de segurança).
+  const banner = emCombate
+    ? `<div class="modo combate">⚔️ Combate — rodada ${campanha.combate?.rodada || 1}
+         <form hx-post="/campanhas/${esc(campanha.id)}/encerrar-combate" hx-target="#painel" hx-swap="outerHTML" style="display:inline">
+           <button class="sec" type="submit">encerrar combate</button>
+         </form>
+       </div>`
+    : "";
   const aviso = erro ? `<div class="erro">⚠️ ${esc(erro)}</div>` : "";
   // Desfazer só pra quem está na vez (gerou o beat) e quando há ponto salvo.
   const desfazer =
@@ -170,6 +184,7 @@ export function painelJogo(campanha, personagens, eu, erro = null) {
 
   return `<div id="painel" class="jogo">
     <div class="col-log">
+      ${banner}
       <div class="log">${logHistorico(campanha.historico) || '<div class="meta">A aventura ainda não começou.</div>'}</div>
       ${aviso}
       ${areaAcao(campanha, ativo, eu)}

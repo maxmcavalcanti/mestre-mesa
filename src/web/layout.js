@@ -25,6 +25,9 @@ const CSS = `
   .dado { font-size: .85rem; padding: .4rem .7rem; border-radius: 8px; font-weight: 600; }
   .dado.ok { color: #b8d0a8; background: #1e2a1c; border-left: 3px solid #7aa05a; }
   .dado.fail { color: #d6a9a9; background: #2a1c1c; border-left: 3px solid #a05a5a; }
+  .msg.sistema { background: #1c2026; border-left: 3px solid #6a7a8a; color: #b8c0c8; font-size: .85rem; text-align: center; }
+  .modo.combate { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .8rem; padding: .5rem .8rem; border-radius: 8px; font-weight: 600; color: #e8c98a; background: #2a2418; border: 1px solid #5a4a2a; }
+  .modo.combate button { font-size: .75rem; padding: .3rem .6rem; }
   .acao.teste { background: #211f2c; border: 1px solid #4a4360; border-radius: 8px; padding: .7rem .9rem; }
   .acao.teste label { color: #e6e3df; font-size: 1rem; }
   .card { background: #1d1b26; border: 1px solid #322e3f; border-radius: 8px; padding: .8rem; margin-bottom: .8rem; }

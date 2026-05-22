@@ -1,6 +1,7 @@
 import { montarSystem } from "./dominio/prompt.js";
 import { parseTags, aplicarEstado } from "./dominio/protocolo.js";
 import { resolverTeste } from "./dominio/regras.js";
+import { iniciarCombate, encerrarCombate } from "./dominio/combate.js";
 import { comSinal } from "./dominio/modificadores.js";
 import { indexar, buscar } from "./memoria.js";
 
@@ -86,10 +87,17 @@ async function gerarTurno({ campanha, personagem, personagens, provider, promptB
   // completo (`bruto`) é parseado normalmente depois — as tags só valem inteiras.
   const bruto = await provider(system, contexto, onDelta);
 
-  const { narracao, teste, estados } = parseTags(bruto);
+  const { narracao, teste, estados, modo } = parseTags(bruto);
   const modificados = aplicarEstado(estados, personagem, campanha, party);
   const textoNarracao = narracao || bruto;
   campanha.historico.push({ papel: "mestre", texto: textoNarracao });
+
+  // Mudança de fase pedida pelo mestre via [MODO]. Idempotente: só age na virada.
+  if (modo === "combate" && campanha.modo !== "combate") {
+    campanha.historico.push({ papel: "sistema", texto: iniciarCombate(campanha, party) });
+  } else if (modo === "exploracao" && campanha.modo === "combate") {
+    campanha.historico.push({ papel: "sistema", texto: encerrarCombate(campanha, party) });
+  }
 
   // A4: indexa o beat (ação do jogador + narração) pra memória de longo prazo.
   await indexarBeat(campanha, entradaJogador, textoNarracao);

@@ -94,8 +94,18 @@ try {
   if (!/msg mestre/.test(depois.html))
     throw new Error("push pós-ação não traz narração do mestre");
 
+  // entra em combate: a ação "ataco" faz o mock emitir [MODO] combate
+  await fetch(base + `/campanhas/${id}/turno`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", "HX-Request": "true", cookie },
+    body: new URLSearchParams({ entrada: "ataco a criatura" }),
+  });
+  const painelCombate = await recebe("painel");
+  if (!/Combate/.test(painelCombate.html))
+    throw new Error("entrada em combate não refletiu no painel (sem banner de combate)");
+
   ws.close();
-  console.log("SMOKE OK: painel inicial + push pós-ação chegaram pelo WebSocket");
+  console.log("SMOKE OK: painel inicial + push pós-ação + entrada em combate pelo WebSocket");
 } catch (e) {
   falhou = e;
   console.error("SMOKE FALHOU:", e.message);

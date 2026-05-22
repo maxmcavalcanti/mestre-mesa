@@ -46,6 +46,20 @@ Operações válidas:
 
 Exemplo de linha: [ESTADO] hp-=3; inventario+=chave enferrujada; local=Salão dos ossos
 
+## Combate (modo de turnos)
+Quando a cena vira combate (inimigos atacam, a party saca armas), termine a
+mensagem com uma linha:
+
+[MODO] combate
+
+Isso faz o sistema rolar iniciativa e dar a vez a cada personagem em rodízio —
+você narra as consequências de cada ação na ordem em que elas chegam. Quando o
+combate acaba (inimigos derrotados, fuga, trégua), encerre com:
+
+[MODO] exploracao
+
+Use [MODO] só na virada (começo/fim do combate), não a cada turno.
+
 ## NPCs e estado do mundo
 A seção "## Mundo" lista os NPCs conhecidos e as flags. Narre sempre coerente
 com ela: um NPC com estado=morto não age — A NÃO SER que a natureza permita

@@ -21,14 +21,20 @@ export function parseTags(texto) {
     estados.push(m[1].trim());
   }
 
+  // [MODO] combate | exploracao — muda a fase de turno (combate vs exploração).
+  let modo = null;
+  const mModo = texto.match(/\[MODO\]\s*(combate|explora\w*)/i);
+  if (mModo) modo = /combate/i.test(mModo[1]) ? "combate" : "exploracao";
+
   const narracao = texto
     .replace(/\[TESTE\][^\n]*/gi, "")
     .replace(/\[ESTADO\][^\n]*/gi, "")
+    .replace(/\[MODO\][^\n]*/gi, "")
     .replace(/[ \t]+\n/g, "\n") // sobras de espaço antes da quebra
     .replace(/\n{3,}/g, "\n\n") // colapsa linhas em branco extras
     .trim();
 
-  return { narracao, teste, estados };
+  return { narracao, teste, estados, modo };
 }
 
 const CAMPOS_NPC = ["nome", "natureza", "estado", "disposicao", "local", "notas"];
