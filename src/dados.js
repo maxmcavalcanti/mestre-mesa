@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { ATRIBUTOS } from "./dominio/modificadores.js";
+import { TONS } from "./dominio/prompt.js";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dirCampanhas = join(raiz, "data", "campanhas");
@@ -79,12 +80,13 @@ export async function listarCampanhas() {
   return campanhas;
 }
 
-export async function criarCampanha({ titulo, local, quests, modulo } = {}) {
+export async function criarCampanha({ titulo, local, quests, modulo, tom } = {}) {
   const id = gerarId(titulo || "campanha");
   const campanha = {
     id,
     titulo: titulo || "Nova Aventura",
     local: local || "Um ponto de partida ainda por definir",
+    tom: TONS[tom] ? tom : "equilibrado",
     quests: quests || [],
     modulo: {
       sinopse: modulo?.sinopse || "",

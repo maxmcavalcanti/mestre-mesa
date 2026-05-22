@@ -6,6 +6,8 @@ import {
   montarSystem,
   montarMundo,
   montarAvisos,
+  montarTom,
+  TONS,
 } from "../src/dominio/prompt.js";
 
 test("montarContextoAventura vazio quando não há módulo", () => {
@@ -45,6 +47,28 @@ test("montarMundo lista NPCs e flags", () => {
   assert.ok(bloco.includes("morto-vivo"));
   assert.ok(bloco.includes("porta_cripta: aberta"));
   assert.equal(montarMundo({}), ""); // sem nada -> vazio
+});
+
+test("montarTom: vazio no padrão e em tom desconhecido, bloco num tom válido", () => {
+  assert.equal(montarTom({ tom: "equilibrado" }), "");
+  assert.equal(montarTom({}), ""); // campanha antiga sem o campo
+  assert.equal(montarTom({ tom: "inexistente" }), "");
+  const b = montarTom({ tom: "sombrio" });
+  assert.ok(b.includes("## Tom da narração"));
+  assert.ok(b.includes(TONS.sombrio.instrucao));
+});
+
+test("montarSystem injeta o tom no prefixo estável (cacheável)", () => {
+  const ativo = {
+    id: "a", nome: "Heroi", classe: "Mago", nivel: 1, hp: 10, hp_max: 10,
+    atributos: { forca: 10, destreza: 10, constituicao: 10, inteligencia: 10, sabedoria: 10, carisma: 10 },
+    inventario: [], tracos: "",
+  };
+  const c = { local: "Cripta", quests: [], modulo: { sinopse: "", notas: "", fontes: [] }, resumo: "", tom: "comico" };
+  const s = montarSystem("REGRAS", ativo, c, [ativo]);
+  assert.ok(s.estavel.includes("## Tom da narração"));
+  assert.ok(s.estavel.includes(TONS.comico.instrucao));
+  assert.ok(!s.dinamico.includes("## Tom da narração")); // não vaza pro dinâmico
 });
 
 test("montarSystem separa prefixo estável (cacheável) de dinâmico", () => {

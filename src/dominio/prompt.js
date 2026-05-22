@@ -1,6 +1,42 @@
 import { modificador, comSinal, ATRIBUTOS } from "./modificadores.js";
 import { questTexto, questEstado } from "./protocolo.js";
 
+// Tons de narração por campanha. `rotulo` aparece no form; `instrucao` entra no
+// prefixo ESTÁVEL do system (montarTom), então é escolhido uma vez por campanha e
+// não invalida o cache de prompt a cada turno. "equilibrado" é o padrão e não
+// injeta nada — mantém o prompt idêntico ao de antes deste recurso.
+export const TONS = {
+  equilibrado: { rotulo: "Equilibrado", instrucao: "" },
+  sombrio: {
+    rotulo: "Sombrio",
+    instrucao:
+      "Narre num registro sombrio e tenso. Realce o medo, a decadência e o peso das escolhas; descreva sombras, frio e silêncio. Evite alívio cômico e finais fáceis — a esperança aparece, mas custa caro.",
+  },
+  heroico: {
+    rotulo: "Heroico",
+    instrucao:
+      "Narre num registro épico e luminoso. Destaque coragem, lealdade e momentos de glória; dê aos personagens chances de brilhar. O tom é grandioso e esperançoso, mesmo diante do perigo.",
+  },
+  comico: {
+    rotulo: "Cômico",
+    instrucao:
+      "Narre num registro leve e bem-humorado. Use situações absurdas, NPCs excêntricos e timing cômico, sem quebrar a lógica da aventura. Os perigos existem, mas o tom é descontraído.",
+  },
+  misterioso: {
+    rotulo: "Misterioso",
+    instrucao:
+      "Narre num registro de mistério e suspense. Revele as coisas aos poucos, semeie pistas e perguntas sem resposta, e mantenha um clima de incerteza. Recompense a investigação e a curiosidade.",
+  },
+};
+
+// Bloco ESTÁVEL com a diretriz de tom da campanha. Vazio para o padrão ou tom
+// desconhecido (tolerante a campanhas antigas sem o campo `tom`).
+export function montarTom(c) {
+  const tom = TONS[c?.tom];
+  if (!tom || !tom.instrucao) return "";
+  return `## Tom da narração\n${tom.instrucao}`;
+}
+
 // Resumo compacto do estado, injetado no system prompt a cada turno.
 export function resumoEstado(p, c) {
   const linhasAtrib = ATRIBUTOS.map((a) => {
@@ -117,6 +153,8 @@ export function montarAvisos(avisos) {
 // A ordem final pro modelo é estavel + dinamico (ver textoSystem).
 export function montarSystem(promptBase, ativo, c, personagens, lembrancas = [], avisos = []) {
   const estaveis = [promptBase];
+  const tom = montarTom(c);
+  if (tom) estaveis.push(tom);
   const aventura = montarContextoAventura(c);
   if (aventura) estaveis.push(aventura);
   const resumo = montarResumo(c);

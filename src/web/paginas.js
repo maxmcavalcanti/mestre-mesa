@@ -1,4 +1,5 @@
 import { ATRIBUTOS } from "../dominio/modificadores.js";
+import { TONS } from "../dominio/prompt.js";
 import { layout, esc } from "./layout.js";
 import { painelJogo } from "./componentes.js";
 
@@ -28,6 +29,12 @@ export function paginaInicial(campanhas) {
         <textarea name="sinopse" placeholder="Resumo curto da aventura"></textarea>
         <label>Notas do mestre — locais, NPCs, segredos, ganchos (opcional)</label>
         <textarea name="notas" placeholder="O que o mestre deve saber para conduzir a história"></textarea>
+        <label>Tom da narração</label>
+        <select name="tom">
+          ${Object.entries(TONS)
+            .map(([k, t]) => `<option value="${esc(k)}">${esc(t.rotulo)}</option>`)
+            .join("")}
+        </select>
       </fieldset>
       <button type="submit">Criar campanha</button>
     </form>

@@ -69,10 +69,11 @@ app.get("/", async (req, res) => {
 });
 
 app.post("/campanhas", async (req, res) => {
-  const { titulo, local, sinopse, notas } = req.body;
+  const { titulo, local, sinopse, notas, tom } = req.body;
   const campanha = await criarCampanha({
     titulo,
     local,
+    tom,
     modulo: { sinopse, notas },
   });
   res.redirect(`/campanhas/${campanha.id}`);
