@@ -5,6 +5,16 @@ no navegador. A narração vem de uma LLM trocável (mock, Ollama local ou Claud
 via API); os dados você rola na mesa de verdade e digita o resultado — o sistema
 aplica o modificador do personagem e compara com a dificuldade (CD).
 
+## Recursos
+
+- **Multiplayer em tempo real** no navegador (WebSocket): narração em streaming,
+  estado sincronizado em todos os aparelhos, presença e aviso de "digitando".
+- **Tom de narração por campanha** (equilibrado, sombrio, heroico, cômico,
+  misterioso) — entra no prefixo cacheável do prompt.
+- **Retratos por classe** (emoji) nos cards e na tela de entrada.
+- **Desfazer o último turno** (restaura o estado anterior à jogada).
+- **LLM trocável** (mock / Ollama / Claude) e **memória de longo prazo (RAG)**.
+
 ## Requisitos
 
 - Node.js >= 20
@@ -32,6 +42,10 @@ o Windows interpõe um `cmd` que pode deixar o node pendurado no Ctrl+C.
 Ao subir, o servidor mostra o endereço local e o da rede (`http://SEU_IP:3000`).
 Cada jogador abre o link no celular, escolhe seu personagem e joga na sua vez.
 Uma tela compartilhada (TV/monitor) pode entrar como "só assistir".
+
+A sincronização é em **tempo real** (WebSocket): a narração aparece em
+streaming, o estado se atualiza em todos os aparelhos sem recarregar, e a barra
+mostra quem está conectado e quem está digitando.
 
 ### No terminal
 
@@ -82,24 +96,39 @@ embeddings e busca semântica passo a passo, para fins de estudo.
 ## Testes
 
 ```bash
-npm test
+npm test          # testes unitários (node:test)
+npm run smoke     # teste e2e do WebSocket (sobe o servidor e se autoencerra)
 ```
 
 ## Estrutura
 
 ```
-cli.js              # jogo no terminal
-server.js           # servidor web (Express) + rotas
-public/             # HTMX vendorizado
+cli.js                 # jogo no terminal
+server.js              # servidor web (Express) + WebSocket + composição
+public/                # HTMX vendorizado
 src/
-  jogo.js           # motor de turno (compartilhado por CLI e web)
-  mestre.js         # monta o prompt, interpreta tags [TESTE]/[ESTADO]
-  dados.js          # persistência de campanhas e personagens
-  modificadores.js  # regra de modificador do d20
-  estado.js         # leitura do prompt base
-  prompt-mestre.md  # personalidade e regras do mestre (edite à vontade)
-  llm/              # providers de LLM (mock, ollama, claude)
-  web/render.js     # renderização HTML/HTMX
-test/               # testes (node:test)
-data/               # campanhas salvas (não versionado)
+  jogo.js              # motor de turno (compartilhado por CLI e web)
+  bootstrap.js         # inicialização comum (provider + prompt base)
+  dados.js             # persistência atômica + serialização por campanha
+  estado.js            # leitura do prompt base
+  memoria.js           # memória de longo prazo (RAG): indexar/buscar
+  prompt-mestre.md     # personalidade e regras do mestre (edite à vontade)
+  dominio/             # regras puras (sem I/O)
+    prompt.js          #   monta o system prompt + catálogo de tons
+    protocolo.js       #   interpreta as tags [TESTE]/[ESTADO]
+    regras.js          #   resolução de testes (d20 + modificador vs CD)
+    modificadores.js   #   regra de modificador de atributo
+    retratos.js        #   emoji por classe
+    desfazer.js        #   snapshot/restaurar (desfazer turno)
+  llm/                 # providers de LLM (mock, ollama, claude) + embeddings
+  web/                 # camada HTTP/HTML/WebSocket
+    rotas.js           #   rotas HTTP
+    sessao.js          #   identidade do dispositivo + carregar/persistir
+    sala.js            #   registro de conexões WebSocket por campanha
+    difusao.js         #   broadcast do painel/presença/streaming
+    paginas.js         #   páginas completas
+    componentes.js     #   o painel de jogo (fragmento sincronizado)
+    layout.js          #   HTML base, CSS e o cliente WebSocket
+test/                  # testes (node:test)
+data/                  # campanhas salvas (não versionado)
 ```
