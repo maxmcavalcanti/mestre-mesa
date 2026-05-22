@@ -1,4 +1,5 @@
 import { montarSystem, parseTags, aplicarEstado, resolverTeste } from "./mestre.js";
+import { comSinal } from "./modificadores.js";
 import { indexar, buscar } from "./memoria.js";
 
 const MAX_CONTEXTO = 16; // quantas mensagens recentes mandar pro LLM por turno
@@ -112,7 +113,7 @@ export async function resolverRolagem({ campanha, personagem, personagens, teste
   );
   campanha.historico.push({
     papel: "jogador",
-    texto: `Resultado do teste de ${teste.atributo}: ${total} contra CD ${teste.cd} (${sucesso ? "sucesso" : "falha"}). Narre o que acontece.`,
+    texto: `Resultado do teste de ${teste.atributo}: ${dado} ${comSinal(mod)} = ${total} vs CD ${teste.cd} (${sucesso ? "sucesso" : "falha"}). Narre o desfecho.`,
   });
   const turno = await gerarTurno({ campanha, personagem, personagens, provider, promptBase });
   return { ...turno, dado, mod, total, sucesso };

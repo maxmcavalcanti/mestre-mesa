@@ -25,7 +25,11 @@ const CSS = `
   .msg.mestre { background: #211f2c; border-left: 3px solid #c9a86a; }
   .msg.jogador { background: #1a2630; border-left: 3px solid #5b8aa6; }
   .msg .quem { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #8a8499; margin-bottom: .2rem; }
-  .dado { font-size: .85rem; color: #b8d0a8; background: #1e2a1c; border-left: 3px solid #7aa05a; padding: .4rem .7rem; border-radius: 8px; }
+  .dado { font-size: .85rem; padding: .4rem .7rem; border-radius: 8px; font-weight: 600; }
+  .dado.ok { color: #b8d0a8; background: #1e2a1c; border-left: 3px solid #7aa05a; }
+  .dado.fail { color: #d6a9a9; background: #2a1c1c; border-left: 3px solid #a05a5a; }
+  .acao.teste { background: #211f2c; border: 1px solid #4a4360; border-radius: 8px; padding: .7rem .9rem; }
+  .acao.teste label { color: #e6e3df; font-size: 1rem; }
   .card { background: #1d1b26; border: 1px solid #322e3f; border-radius: 8px; padding: .8rem; margin-bottom: .8rem; }
   .card.ativo { border-color: #c9a86a; }
   .card h3 { margin: 0 0 .3rem; font-size: 1rem; }
@@ -217,11 +221,13 @@ function areaAcao(campanha, ativo, eu) {
   }
   if (campanha.teste_pendente) {
     const t = campanha.teste_pendente;
-    return `<form class="acao" hx-post="/campanhas/${esc(campanha.id)}/rolagem" hx-target="#painel" hx-swap="outerHTML">
-      <label>O mestre pediu um teste de <strong>${esc(t.atributo)}</strong> (CD ${t.cd}). Role um d20 na mesa e digite o número:</label>
+    const mod = modificador(ativo?.atributos?.[t.atributo] ?? 10);
+    return `<form class="acao teste" hx-post="/campanhas/${esc(campanha.id)}/rolagem" hx-target="#painel" hx-swap="outerHTML">
+      <label>🎲 Teste de <strong>${esc(t.atributo)}</strong> · CD ${t.cd}</label>
+      <div class="meta">Role um d20 na mesa e digite o resultado. Seu modificador de ${esc(t.atributo)} (${comSinal(mod)}) é somado automaticamente.</div>
       <div class="linha">
-        <input type="number" name="dado" min="1" max="20" required autofocus>
-        <button type="submit">Enviar rolagem</button>
+        <input type="number" name="dado" min="1" max="20" required autofocus placeholder="d20">
+        <button type="submit">Rolar</button>
       </div>
     </form>`;
   }
@@ -241,7 +247,11 @@ function logHistorico(historico) {
     if (m.papel === "mestre") {
       blocos.push(`<div class="msg mestre"><div class="quem">Mestre</div>${esc(m.texto)}</div>`);
     } else if (m.texto.startsWith("Resultado do teste")) {
-      blocos.push(`<div class="dado">🎲 ${esc(m.texto.replace(/\. Narre.*$/, ""))}</div>`);
+      const txt = m.texto.replace(/\.\s*Narre.*$/i, "");
+      const ok = /\(sucesso\)/i.test(txt);
+      blocos.push(
+        `<div class="dado ${ok ? "ok" : "fail"}">🎲 ${esc(txt)} ${ok ? "✓" : "✗"}</div>`,
+      );
     } else if (m.texto.startsWith("Comece a aventura")) {
       // semente da abertura — não mostra
     } else {

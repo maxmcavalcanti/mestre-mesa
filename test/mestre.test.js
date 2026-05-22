@@ -18,6 +18,19 @@ test("parseTags separa narração de [TESTE]", () => {
   assert.deepEqual(r.estados, []);
 });
 
+test("parseTags detecta [TESTE] inline (grudado no fim da frase)", () => {
+  const r = parseTags("A sombra começa a se mover... [TESTE] atributo=destreza cd=13");
+  assert.deepEqual(r.teste, { atributo: "destreza", cd: 13 });
+  assert.ok(!r.narracao.includes("[TESTE]"));
+  assert.ok(r.narracao.includes("A sombra começa a se mover"));
+});
+
+test("parseTags detecta [ESTADO] inline e tira da narração", () => {
+  const r = parseTags("Você pega a chave enferrujada. [ESTADO] inventario+=chave enferrujada");
+  assert.deepEqual(r.estados, ["inventario+=chave enferrujada"]);
+  assert.equal(r.narracao, "Você pega a chave enferrujada.");
+});
+
 test("parseTags coleta [ESTADO] e normaliza atributo do teste", () => {
   const r = parseTags("Algo acontece.\n[ESTADO] hp-=3; local=Cripta\n[TESTE] atributo=Destreza cd=10");
   assert.equal(r.narracao, "Algo acontece.");

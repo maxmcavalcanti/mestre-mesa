@@ -143,29 +143,35 @@ export function montarSystem(promptBase, ativo, c, personagens, lembrancas = [],
   return { estavel: estaveis.join("\n\n"), dinamico: dinamicos.join("\n\n") };
 }
 
-// Separa a narração das linhas de protocolo [TESTE] e [ESTADO].
+// Separa a narração das tags de protocolo [TESTE] e [ESTADO]. As tags são
+// reconhecidas em QUALQUER posição (inline ou em linha própria) — modelos locais
+// costumam grudá-las no fim da frase — e cada uma vale até o fim da sua linha.
 export function parseTags(texto) {
-  const narracao = [];
   let teste = null;
   const estados = [];
 
-  for (const linha of texto.split("\n")) {
-    const t = linha.trim();
-    if (t.startsWith("[TESTE]")) {
-      const atrib = t.match(/atributo\s*=\s*([^\s]+)/i);
-      const cd = t.match(/cd\s*=\s*(\d+)/i);
-      teste = {
-        atributo: normalizaAtributo(atrib?.[1] || ""),
-        cd: cd ? parseInt(cd[1], 10) : 10,
-      };
-    } else if (t.startsWith("[ESTADO]")) {
-      estados.push(t.slice("[ESTADO]".length).trim());
-    } else {
-      narracao.push(linha);
-    }
+  const mTeste = texto.match(/\[TESTE\]([^\n]*)/i);
+  if (mTeste) {
+    const atrib = mTeste[1].match(/atributo\s*=\s*([^\s;]+)/i);
+    const cd = mTeste[1].match(/cd\s*=\s*(\d+)/i);
+    teste = {
+      atributo: normalizaAtributo(atrib?.[1] || ""),
+      cd: cd ? parseInt(cd[1], 10) : 10,
+    };
   }
 
-  return { narracao: narracao.join("\n").trim(), teste, estados };
+  for (const m of texto.matchAll(/\[ESTADO\]([^\n]*)/gi)) {
+    estados.push(m[1].trim());
+  }
+
+  const narracao = texto
+    .replace(/\[TESTE\][^\n]*/gi, "")
+    .replace(/\[ESTADO\][^\n]*/gi, "")
+    .replace(/[ \t]+\n/g, "\n") // sobras de espaço antes da quebra
+    .replace(/\n{3,}/g, "\n\n") // colapsa linhas em branco extras
+    .trim();
+
+  return { narracao, teste, estados };
 }
 
 const CAMPOS_NPC = ["nome", "natureza", "estado", "disposicao", "local", "notas"];
