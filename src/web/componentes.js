@@ -147,20 +147,18 @@ function formNovoPersonagem(campanhaId) {
   </details>`;
 }
 
-// Fragmento trocável pelo HTMX: log + party + área de ação. `eu` é o id do
+// Fragmento sincronizado por WebSocket: log + party + área de ação. `eu` é o id do
 // personagem que ESTE dispositivo controla ('tela' = só assistindo, null = sem
-// identidade). O polling (every 3s) só é injetado quando NÃO é a vez deste
-// dispositivo, pra não apagar o input de quem está agindo. `erro` é uma mensagem
+// identidade). O servidor empurra este painel (renderizado por-eu) a cada mudança
+// de estado; o cliente ignora o push enquanto o input de ação está em edição, pra
+// não apagar o que o jogador da vez está digitando. `erro` é uma mensagem
 // transitória (turno que falhou): aparece só pra quem agiu, na resposta do POST,
-// e some no próximo polling/ação — não é persistida.
+// e some no próximo push/ação — não é persistida.
 export function painelJogo(campanha, personagens, eu, erro = null) {
   const ativo =
     personagens.find((p) => p.id === campanha.turno_de) || personagens[0] || null;
   const cards = personagens.map((p) => cardPersonagem(p, ativo?.id, campanha.id)).join("");
   const minhaVez = eu && ativo && eu === ativo.id;
-  const poll = minhaVez
-    ? ""
-    : `<div hx-get="/campanhas/${esc(campanha.id)}/painel" hx-trigger="every 3s" hx-target="#painel" hx-swap="outerHTML" style="display:none"></div>`;
   const aviso = erro ? `<div class="erro">⚠️ ${esc(erro)}</div>` : "";
   // Desfazer só pra quem está na vez (gerou o beat) e quando há ponto salvo.
   const desfazer =
@@ -184,6 +182,5 @@ export function painelJogo(campanha, personagens, eu, erro = null) {
       ${blocoMissoes(campanha)}
       ${blocoMundo(campanha)}
     </aside>
-    ${poll}
   </div>`;
 }

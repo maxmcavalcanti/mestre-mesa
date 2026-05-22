@@ -44,19 +44,20 @@ export function paginaInicial(campanhas) {
 }
 
 export function paginaJogo(campanha, personagens, eu) {
-  const euNome =
-    eu === "tela"
-      ? "tela (assistindo)"
-      : personagens.find((p) => p.id === eu)?.nome || "?";
+  const meuNome = eu === "tela" ? "tela" : personagens.find((p) => p.id === eu)?.nome || eu;
+  const euNome = eu === "tela" ? "tela (assistindo)" : meuNome || "?";
   const corpo = `
   <header class="topo">
     <h1><a href="/" style="text-decoration:none;color:inherit">←</a> ${esc(campanha.titulo)}</h1>
     <span class="local">${esc(campanha.local)}</span>
+    <span id="presenca" class="presenca"></span>
     <span class="local" style="margin-left:auto">você: <strong>${esc(euNome)}</strong> · <a href="/campanhas/${esc(campanha.id)}/trocar">trocar</a></span>
   </header>
   <div class="container">
+    <div id="digitando" class="digitando-aviso"></div>
     ${painelJogo(campanha, personagens, eu)}
-  </div>`;
+  </div>
+  <script>window.MESA = { campanha: ${JSON.stringify(campanha.id)}, eu: ${JSON.stringify(eu)}, nome: ${JSON.stringify(meuNome)} };</script>`;
   return layout({ titulo: campanha.titulo, corpo });
 }
 

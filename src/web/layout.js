@@ -60,6 +60,10 @@ const CSS = `
   .erro { margin-top: 1rem; padding: .6rem .9rem; border-radius: 8px; font-size: .9rem; color: #d6a9a9; background: #2a1c1c; border-left: 3px solid #a05a5a; }
   .desfazer { margin-top: .6rem; text-align: right; }
   .desfazer button { font-size: .8rem; padding: .35rem .7rem; opacity: .8; }
+  .presenca { color: #7aa05a; font-size: .8rem; }
+  .presenca.off { color: #a05a5a; }
+  .digitando-aviso { color: #a8a2b8; font-size: .85rem; font-style: italic; min-height: 1.2em; margin-bottom: .4rem; }
+  .digitando-aviso:empty { min-height: 0; margin: 0; }
 
   /* Celular: empilha em uma coluna e deixa a página rolar naturalmente. */
   @media (max-width: 720px) {
@@ -89,7 +93,7 @@ export function layout({ titulo, corpo }) {
 <script>
   // Mantém a última mensagem à vista (rolar pro fim), no log (desktop) ou na
   // página (celular). Só rola se o usuário já estava perto do fim, pra não puxar
-  // a tela durante a leitura quando o polling atualiza.
+  // a tela durante a leitura quando chega uma atualização.
   function rolarParaUltimo() {
     var log = document.querySelector('.log');
     var ultimo = log && log.lastElementChild;
@@ -105,6 +109,77 @@ export function layout({ titulo, corpo }) {
   document.addEventListener('htmx:beforeSwap', function () { estavaPerto = pertoDoFim(); });
   document.addEventListener('htmx:afterSwap', function () { if (estavaPerto) rolarParaUltimo(); });
   document.addEventListener('DOMContentLoaded', rolarParaUltimo);
+
+  // ---- Tempo real (WebSocket) ----
+  // Conecta só na página de jogo (window.MESA presente). O servidor empurra o
+  // painel (renderizado pro nosso eu), a presença e quem está digitando.
+  (function () {
+    if (!window.MESA) return;
+    var ws = null, tentativas = 0, ultimoDigitando = false;
+
+    // Não troca o painel enquanto o jogador está digitando a ação/rolagem, pra
+    // não apagar o que ele escreveu (espelha o antigo gate do polling).
+    function editando() {
+      var inp = document.querySelector('#painel .acao input[name="entrada"], #painel .acao input[name="dado"]');
+      if (!inp) return false;
+      return document.activeElement === inp || (inp.value && inp.value.trim().length > 0);
+    }
+    function aplicarPainel(html) {
+      var atual = document.getElementById('painel');
+      if (!atual) return;
+      var perto = pertoDoFim();
+      atual.outerHTML = html;
+      if (window.htmx) htmx.process(document.getElementById('painel'));
+      ultimoDigitando = false; // o input some no swap
+      if (perto) rolarParaUltimo();
+    }
+    function mostrarPresenca(quem) {
+      var el = document.getElementById('presenca');
+      if (!el) return;
+      el.textContent = (quem && quem.length) ? ('● ' + quem.join(', ')) : '';
+      el.classList.toggle('off', !ws || ws.readyState !== 1);
+    }
+    function mostrarDigitando(quem) {
+      var el = document.getElementById('digitando');
+      if (!el) return;
+      var outros = (quem || []).filter(function (n) { return n !== MESA.nome; });
+      if (!outros.length) { el.textContent = ''; return; }
+      el.textContent = outros.length === 1
+        ? (outros[0] + ' está digitando…')
+        : (outros.join(', ') + ' estão digitando…');
+    }
+    function tratar(msg) {
+      if (msg.tipo === 'painel') { if (!editando()) aplicarPainel(msg.html); }
+      else if (msg.tipo === 'presenca') mostrarPresenca(msg.quem);
+      else if (msg.tipo === 'digitando') mostrarDigitando(msg.quem);
+    }
+    function conectar() {
+      var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(proto + '://' + location.host + '/ws?campanha='
+        + encodeURIComponent(MESA.campanha) + '&eu=' + encodeURIComponent(MESA.eu));
+      ws.onopen = function () { tentativas = 0; var p = document.getElementById('presenca'); if (p) p.classList.remove('off'); };
+      ws.onmessage = function (ev) { try { tratar(JSON.parse(ev.data)); } catch (e) {} };
+      ws.onclose = function () {
+        var p = document.getElementById('presenca'); if (p) p.classList.add('off');
+        tentativas++;
+        setTimeout(conectar, Math.min(1000 * tentativas, 5000)); // backoff até 5s
+      };
+      ws.onerror = function () { try { ws.close(); } catch (e) {} };
+    }
+    function sinalizarDigitando(on) {
+      on = Boolean(on);
+      if (on === ultimoDigitando) return;
+      ultimoDigitando = on;
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ tipo: 'digitando', on: on }));
+    }
+    document.addEventListener('input', function (e) {
+      if (e.target.matches && e.target.matches('#painel .acao input[name="entrada"]'))
+        sinalizarDigitando(e.target.value.trim().length > 0);
+    });
+    document.addEventListener('htmx:afterSwap', function () { sinalizarDigitando(false); });
+
+    conectar();
+  })();
 </script>
 </body>
 </html>`;

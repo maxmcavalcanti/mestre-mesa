@@ -13,10 +13,13 @@ import { processarAcao, resolverRolagem } from "../jogo.js";
 import { instantaneo, restaurar } from "../dominio/desfazer.js";
 import { paginaInicial, paginaJogo, paginaEntrar } from "./paginas.js";
 import { painelJogo } from "./componentes.js";
+import { difundirPainel, difundirPresenca } from "./difusao.js";
 import { getEu, definirEu, carregarSessao, persistir } from "./sessao.js";
 
-// Registra todas as rotas HTTP no app. `provider`/`promptBase` vêm do bootstrap.
-export function registrarRotas(app, { provider, promptBase }) {
+// Registra todas as rotas HTTP no app. `provider`/`promptBase` vêm do bootstrap;
+// `sala` é o registro de WebSockets, pra empurrar o painel atualizado aos demais
+// dispositivos depois de cada mutação (substitui o polling).
+export function registrarRotas(app, { provider, promptBase, sala }) {
   // ---- Páginas ----
 
   app.get("/", async (req, res) => {
@@ -81,6 +84,9 @@ export function registrarRotas(app, { provider, promptBase }) {
       }
       return { novo, campanha, personagens };
     });
+    // Roster mudou: atualiza o painel e a presença de todo mundo na sala.
+    difundirPainel(sala, campanha, personagens);
+    difundirPresenca(sala, id, personagens);
     // Criado pela tela de entrada (não-HTMX): vira esse personagem e entra no jogo.
     if (!req.get("HX-Request")) {
       definirEu(res, id, novo.id);
@@ -96,6 +102,7 @@ export function registrarRotas(app, { provider, promptBase }) {
       if (personagens.some((p) => p.id === req.body.turno_de)) {
         campanha.turno_de = req.body.turno_de;
         await salvarCampanha(campanha);
+        difundirPainel(sala, campanha, personagens); // a vez mudou pra todos
       }
       return painelJogo(campanha, personagens, getEu(req, id));
     });
@@ -120,6 +127,7 @@ export function registrarRotas(app, { provider, promptBase }) {
         // cresceu); branches no-op (sem ação / entrada vazia) não viram snapshot.
         if (campanha.historico.length > tamHist) campanha.desfazer = snap;
         await persistir(campanha, personagens, r.modificados || []);
+        difundirPainel(sala, campanha, personagens); // turno resolvido pra todos
       } catch (err) {
         console.error(`[erro do mestre] ${err.message}`);
         // Nada persistido: banner de erro pra quem agiu. O estado em memória (inclui
@@ -189,6 +197,7 @@ export function registrarRotas(app, { provider, promptBase }) {
         return painelJogo(campanha, personagens, eu);
       await salvarCampanha(restaurado.campanha);
       for (const p of restaurado.personagens) await salvarPersonagem(id, p);
+      difundirPainel(sala, restaurado.campanha, restaurado.personagens);
       return painelJogo(restaurado.campanha, restaurado.personagens, eu);
     });
     res.send(html);
