@@ -1,5 +1,6 @@
 import { modificador, comSinal, ATRIBUTOS } from "../dominio/modificadores.js";
 import { questTexto, questEstado } from "../dominio/protocolo.js";
+import { retratoClasse } from "../dominio/retratos.js";
 import { esc } from "./layout.js";
 
 function cardPersonagem(p, ativoId, campanhaId) {
@@ -17,8 +18,13 @@ function cardPersonagem(p, ativoId, campanhaId) {
     ? `<div class="meta">Condições: ${esc(p.condicoes.join(", "))}</div>`
     : "";
   return `<div class="card ${p.id === ativoId ? "ativo" : ""}">
-    <h3>${esc(p.nome)}</h3>
-    <div class="meta">${esc(p.classe)} • nível ${p.nivel} • HP ${p.hp}/${p.hp_max}</div>
+    <div class="cab">
+      <div class="retrato" aria-hidden="true">${retratoClasse(p.classe)}</div>
+      <div>
+        <h3>${esc(p.nome)}</h3>
+        <div class="meta">${esc(p.classe)} • nível ${p.nivel} • HP ${p.hp}/${p.hp_max}</div>
+      </div>
+    </div>
     <div class="atributos">${atrib}</div>
     <div class="meta">Itens: ${esc(p.inventario.join(", ") || "—")}</div>
     ${cond}

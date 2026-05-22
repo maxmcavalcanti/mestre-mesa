@@ -1,5 +1,6 @@
 import { ATRIBUTOS } from "../dominio/modificadores.js";
 import { TONS } from "../dominio/prompt.js";
+import { retratoClasse } from "../dominio/retratos.js";
 import { layout, esc } from "./layout.js";
 import { painelJogo } from "./componentes.js";
 
@@ -67,7 +68,7 @@ export function paginaEntrar(campanha, personagens) {
         (p) =>
           `<form method="post" action="/campanhas/${esc(campanha.id)}/entrar" style="display:inline-block;margin:.3rem">
              <input type="hidden" name="eu" value="${esc(p.id)}">
-             <button type="submit">${esc(p.nome)} <span style="opacity:.7">· ${esc(p.classe)}</span></button>
+             <button type="submit">${retratoClasse(p.classe)} ${esc(p.nome)} <span style="opacity:.7">· ${esc(p.classe)}</span></button>
            </form>`,
       )
       .join("") || '<p class="meta">Nenhum personagem ainda. Crie o seu abaixo.</p>';

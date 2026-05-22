@@ -30,6 +30,10 @@ const CSS = `
   .card { background: #1d1b26; border: 1px solid #322e3f; border-radius: 8px; padding: .8rem; margin-bottom: .8rem; }
   .card.ativo { border-color: #c9a86a; }
   .card h3 { margin: 0 0 .3rem; font-size: 1rem; }
+  .card .cab { display: flex; align-items: center; gap: .6rem; }
+  .card .cab h3 { margin: 0; }
+  .retrato { flex: none; width: 2.4rem; height: 2.4rem; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; line-height: 1; background: #14131a; border: 1px solid #322e3f; border-radius: 50%; }
+  .card.ativo .retrato { border-color: #c9a86a; }
   .card .meta { color: #a8a2b8; font-size: .85rem; }
   .atributos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .2rem .6rem; font-size: .8rem; margin: .5rem 0; }
   input, textarea, select, button { font: inherit; }
