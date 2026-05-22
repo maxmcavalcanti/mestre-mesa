@@ -8,6 +8,15 @@ e o projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 
+- **Sistema de turnos com modos:**
+  - **Combate** disparado pelo mestre (tag `[MODO] combate`): rola iniciativa
+    (`d20+destreza`), monta a ordem e faz **rodízio automático** — a vez avança
+    sozinha após cada ação, pula caídos e vira a rodada. Botão "encerrar combate"
+    como rede de segurança.
+  - **Líder + ação de grupo (exploração):** um líder designado pode **propor uma
+    ação ao grupo**; os demais **votam** (concordo/discordo). Concordantes seguem
+    na ação coletiva (vai ao mestre); discordantes agem individualmente, um a um.
+    Fora da votação, qualquer jogador continua agindo livremente.
 - **Multiplayer em tempo real (WebSocket):** o servidor empurra o estado para
   todos os aparelhos sem recarregar; barra de presença (quem está conectado) e
   aviso de "fulano está digitando".
