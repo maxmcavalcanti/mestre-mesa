@@ -116,6 +116,7 @@ export function layout({ titulo, corpo }) {
   (function () {
     if (!window.MESA) return;
     var ws = null, tentativas = 0, ultimoDigitando = false;
+    var streamAcc = "", bolha = null;
 
     // Não troca o painel enquanto o jogador está digitando a ação/rolagem, pra
     // não apagar o que ele escreveu (espelha o antigo gate do polling).
@@ -131,6 +132,30 @@ export function layout({ titulo, corpo }) {
       atual.outerHTML = html;
       if (window.htmx) htmx.process(document.getElementById('painel'));
       ultimoDigitando = false; // o input some no swap
+      bolha = null; streamAcc = ""; // a bolha provisória foi substituída pelo log real
+      if (perto) rolarParaUltimo();
+    }
+    // Bolha provisória do mestre durante o streaming. Mostra só o texto ANTES da
+    // primeira tag [TESTE]/[ESTADO] (re-derivado do acumulado, tolera token parcial);
+    // o painel final (push pós-turno) substitui a bolha pelo histórico de verdade.
+    function streamInicio() {
+      var log = document.querySelector('#painel .log');
+      streamAcc = "";
+      bolha = null;
+      if (!log) return;
+      bolha = document.createElement('div');
+      bolha.className = 'msg mestre';
+      bolha.innerHTML = '<div class="quem">Mestre</div><span class="txt"></span>';
+      log.appendChild(bolha);
+      if (pertoDoFim()) rolarParaUltimo();
+    }
+    function streamToken(texto) {
+      if (!bolha) streamInicio();
+      if (!bolha) return;
+      streamAcc += texto;
+      var visivel = streamAcc.split(/\\n?\\[(?:TESTE|ESTADO)\\]/)[0];
+      var perto = pertoDoFim();
+      bolha.querySelector('.txt').textContent = visivel;
       if (perto) rolarParaUltimo();
     }
     function mostrarPresenca(quem) {
@@ -152,6 +177,8 @@ export function layout({ titulo, corpo }) {
       if (msg.tipo === 'painel') { if (!editando()) aplicarPainel(msg.html); }
       else if (msg.tipo === 'presenca') mostrarPresenca(msg.quem);
       else if (msg.tipo === 'digitando') mostrarDigitando(msg.quem);
+      else if (msg.tipo === 'stream-inicio') streamInicio();
+      else if (msg.tipo === 'stream-token') streamToken(msg.texto);
     }
     function conectar() {
       var proto = location.protocol === 'https:' ? 'wss' : 'ws';

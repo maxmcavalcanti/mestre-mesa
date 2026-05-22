@@ -120,8 +120,15 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
       if (!ativo || eu !== ativo.id) return painelJogo(campanha, personagens, eu);
       const snap = instantaneo(campanha, personagens); // estado antes do turno
       const tamHist = campanha.historico.length;
+      // Streaming: repassa a narração em pedaços pra sala. O 'stream-inicio' sai
+      // no 1º token (se houver), então branches no-op não disparam nada.
+      let abriu = false;
+      const onDelta = (texto) => {
+        if (!abriu) { sala.transmitir(id, { tipo: "stream-inicio" }); abriu = true; }
+        sala.transmitir(id, { tipo: "stream-token", texto });
+      };
       try {
-        const r = await fn({ campanha, personagens, ativo });
+        const r = await fn({ campanha, personagens, ativo, onDelta });
         campanha.teste_pendente = r.teste || null;
         // Só registra o ponto de desfazer se um turno de fato rolou (o histórico
         // cresceu); branches no-op (sem ação / entrada vazia) não viram snapshot.
@@ -140,7 +147,7 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
   }
 
   app.post("/campanhas/:id/comecar", async (req, res) => {
-    await rodarTurno(req, res, req.params.id, ({ campanha, personagens, ativo }) => {
+    await rodarTurno(req, res, req.params.id, ({ campanha, personagens, ativo, onDelta }) => {
       if (campanha.historico.length > 0) return { teste: campanha.teste_pendente };
       return processarAcao({
         campanha,
@@ -149,13 +156,14 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
         entrada: ABERTURA,
         provider,
         promptBase,
+        onDelta,
       });
     });
   });
 
   app.post("/campanhas/:id/turno", async (req, res) => {
     const entrada = (req.body.entrada || "").trim();
-    await rodarTurno(req, res, req.params.id, ({ campanha, personagens, ativo }) => {
+    await rodarTurno(req, res, req.params.id, ({ campanha, personagens, ativo, onDelta }) => {
       if (!entrada) return { teste: campanha.teste_pendente };
       return processarAcao({
         campanha,
@@ -164,13 +172,14 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
         entrada,
         provider,
         promptBase,
+        onDelta,
       });
     });
   });
 
   app.post("/campanhas/:id/rolagem", async (req, res) => {
     const dado = parseInt(req.body.dado, 10);
-    await rodarTurno(req, res, req.params.id, ({ campanha, personagens, ativo }) => {
+    await rodarTurno(req, res, req.params.id, ({ campanha, personagens, ativo, onDelta }) => {
       if (!campanha.teste_pendente || Number.isNaN(dado))
         return { teste: campanha.teste_pendente };
       return resolverRolagem({
@@ -181,6 +190,7 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
         dado,
         provider,
         promptBase,
+        onDelta,
       });
     });
   });

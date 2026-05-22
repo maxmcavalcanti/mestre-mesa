@@ -80,13 +80,16 @@ try {
   if (!/Come.ar a aventura/.test(inicial.html))
     throw new Error("painel inicial não traz o botão de começar");
 
-  // dispara uma ação (mock) por POST; o leitor bufferiza o push que chega durante
-  // o fetch, então recebe() depois encontra o painel empurrado na fila.
+  // dispara uma ação (mock) por POST; o leitor bufferiza os pushes que chegam
+  // durante o fetch (stream + painel final), então recebe() os encontra na fila.
   await fetch(base + `/campanhas/${id}/comecar`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded", "HX-Request": "true", cookie },
     body: "",
   });
+  await recebe("stream-inicio");
+  const tok = await recebe("stream-token");
+  if (!tok.texto) throw new Error("stream-token veio vazio");
   const depois = await recebe("painel");
   if (!/msg mestre/.test(depois.html))
     throw new Error("push pós-ação não traz narração do mestre");

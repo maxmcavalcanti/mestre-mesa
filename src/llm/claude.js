@@ -31,7 +31,7 @@ export function resumoUso(usage, totais) {
 // party, lembranças do RAG) muda a cada turno e fica FORA do cache, depois do
 // breakpoint. Caching exige um prefixo estável; misturar o dinâmico nele zeraria
 // o ganho.
-export async function claude(system, mensagens) {
+export async function claude(system, mensagens, onDelta) {
   let Anthropic;
   try {
     ({ default: Anthropic } = await import("@anthropic-ai/sdk"));
@@ -51,13 +51,17 @@ export async function claude(system, mensagens) {
   ];
   if (partes.dinamico) blocosSystem.push({ type: "text", text: partes.dinamico });
 
-  const resp = await client.messages.create({
+  // Sempre via stream: quando há onDelta, repassa os deltas de texto; de qualquer
+  // forma, finalMessage() dá a mensagem completa + usage (inclui tokens de cache).
+  const stream = client.messages.stream({
     model: modelo,
     max_tokens: 1024,
     system: blocosSystem,
     messages: paraMensagens(mensagens),
   });
+  if (onDelta) stream.on("text", (delta) => onDelta(delta));
 
+  const resp = await stream.finalMessage();
   console.log(`[claude] ${modelo} • ${resumoUso(resp.usage, totaisSessao)}`);
 
   return resp.content

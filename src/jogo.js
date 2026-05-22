@@ -68,7 +68,7 @@ async function talvezResumir(campanha, provider) {
 // rolagem: se a narração pedir um teste, ele volta em `teste` e quem chama decide
 // como coletar o dado (CLI no loop, web num segundo request). `personagens` é a
 // party completa (default: só o ativo); `modificados` lista os ids alterados.
-async function gerarTurno({ campanha, personagem, personagens, provider, promptBase }) {
+async function gerarTurno({ campanha, personagem, personagens, provider, promptBase, onDelta }) {
   const party = personagens || [personagem];
 
   // A5: recupera lembranças relevantes ANTES de montar o system (busca async).
@@ -82,7 +82,9 @@ async function gerarTurno({ campanha, personagem, personagens, provider, promptB
 
   const system = montarSystem(promptBase, personagem, campanha, party, lembrancas, avisos);
   const contexto = campanha.historico.slice(-MAX_CONTEXTO);
-  const bruto = await provider(system, contexto);
+  // onDelta (se houver) recebe a narração em pedaços pra streaming; o texto
+  // completo (`bruto`) é parseado normalmente depois — as tags só valem inteiras.
+  const bruto = await provider(system, contexto, onDelta);
 
   const { narracao, teste, estados } = parseTags(bruto);
   const modificados = aplicarEstado(estados, personagem, campanha, party);
@@ -99,14 +101,14 @@ async function gerarTurno({ campanha, personagem, personagens, provider, promptB
 
 // Processa a ação livre de um jogador. Muta campanha/personagens em memória;
 // quem chama é responsável por persistir.
-export async function processarAcao({ campanha, personagem, personagens, entrada, provider, promptBase }) {
+export async function processarAcao({ campanha, personagem, personagens, entrada, provider, promptBase, onDelta }) {
   campanha.historico.push({ papel: "jogador", texto: entrada });
-  return gerarTurno({ campanha, personagem, personagens, provider, promptBase });
+  return gerarTurno({ campanha, personagem, personagens, provider, promptBase, onDelta });
 }
 
 // Aplica o resultado de um dado físico (dado cru + modificador vs CD) e pede ao
 // mestre que narre o desfecho.
-export async function resolverRolagem({ campanha, personagem, personagens, teste, dado, provider, promptBase }) {
+export async function resolverRolagem({ campanha, personagem, personagens, teste, dado, provider, promptBase, onDelta }) {
   const { mod, total, sucesso } = resolverTeste(
     personagem,
     teste.atributo,
@@ -117,6 +119,6 @@ export async function resolverRolagem({ campanha, personagem, personagens, teste
     papel: "jogador",
     texto: `Resultado do teste de ${teste.atributo}: ${dado} ${comSinal(mod)} = ${total} vs CD ${teste.cd} (${sucesso ? "sucesso" : "falha"}). Narre o desfecho.`,
   });
-  const turno = await gerarTurno({ campanha, personagem, personagens, provider, promptBase });
+  const turno = await gerarTurno({ campanha, personagem, personagens, provider, promptBase, onDelta });
   return { ...turno, dado, mod, total, sucesso };
 }
