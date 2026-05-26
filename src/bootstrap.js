@@ -8,7 +8,9 @@ export const ABERTURA =
 // Inicialização comum aos dois entrypoints (CLI e servidor): escolhe o provider
 // de LLM (via env MESTRE_LLM) e carrega o prompt base do mestre.
 export async function iniciar() {
-  const provider = criarProvider();
+  const nome = process.env.MESTRE_LLM || "mock";
+  const provider = criarProvider(nome);
   const promptBase = await lerPromptBase();
+  console.log(`[LLM] provider=${nome}${nome === "ollama" ? ` modelo=${process.env.OLLAMA_MODEL || "llama3.1"} host=${process.env.OLLAMA_HOST || "http://localhost:11434"}` : ""}`);
   return { provider, promptBase };
 }
