@@ -36,6 +36,12 @@ export function paginaInicial(campanhas) {
             .map(([k, t]) => `<option value="${esc(k)}">${esc(t.rotulo)}</option>`)
             .join("")}
         </select>
+        <label>Voz do mestre (TTS)</label>
+        <select name="tom_voz">
+          <option value="">Desligado</option>
+          <option value="masc">Voz masculina</option>
+          <option value="fem">Voz feminina</option>
+        </select>
       </fieldset>
       <button type="submit">Criar campanha</button>
     </form>

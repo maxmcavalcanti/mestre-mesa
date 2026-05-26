@@ -35,11 +35,12 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
   });
 
   app.post("/campanhas", async (req, res) => {
-    const { titulo, local, sinopse, notas, tom } = req.body;
+    const { titulo, local, sinopse, notas, tom, tom_voz } = req.body;
     const campanha = await criarCampanha({
       titulo,
       local,
       tom,
+      tom_voz: tom_voz || null,
       modulo: { sinopse, notas },
     });
     res.redirect(`/campanhas/${campanha.id}`);

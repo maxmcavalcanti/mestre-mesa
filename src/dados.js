@@ -80,13 +80,23 @@ export async function listarCampanhas() {
   return campanhas;
 }
 
-export async function criarCampanha({ titulo, local, quests, modulo, tom } = {}) {
+const VOZES_TTS = new Set(["masc", "fem"]);
+
+// Normaliza o tom de voz vindo do form ou do JSON. Aceita só 'masc'/'fem';
+// qualquer outra coisa (string vazia, undefined, valor desconhecido) vira null,
+// que significa TTS desligado pra essa campanha.
+export function normalizarVozTts(v) {
+  return VOZES_TTS.has(v) ? v : null;
+}
+
+export async function criarCampanha({ titulo, local, quests, modulo, tom, tom_voz } = {}) {
   const id = gerarId(titulo || "campanha");
   const campanha = {
     id,
     titulo: titulo || "Nova Aventura",
     local: local || "Um ponto de partida ainda por definir",
     tom: TONS[tom] ? tom : "equilibrado",
+    tom_voz: normalizarVozTts(tom_voz), // null = TTS off
     modo: "exploracao", // exploracao | combate
     lider: null, // personagem que pode propor ações de grupo (votação)
     quests: quests || [],

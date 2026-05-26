@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { comCampanha } from "../src/dados.js";
+import { comCampanha, normalizarVozTts } from "../src/dados.js";
 
 const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms));
 
@@ -50,4 +50,17 @@ test("comCampanha propaga o erro ao chamador, mas não trava a fila", async () =
     rodou = true;
   });
   assert.equal(rodou, true);
+});
+
+test("normalizarVozTts aceita masc e fem", () => {
+  assert.equal(normalizarVozTts("masc"), "masc");
+  assert.equal(normalizarVozTts("fem"), "fem");
+});
+
+test("normalizarVozTts vira null para qualquer outro valor", () => {
+  assert.equal(normalizarVozTts(""), null);
+  assert.equal(normalizarVozTts(null), null);
+  assert.equal(normalizarVozTts(undefined), null);
+  assert.equal(normalizarVozTts("MASC"), null); // case-sensitive
+  assert.equal(normalizarVozTts("xyz"), null);
 });
