@@ -23,6 +23,7 @@ import { paginaInicial, paginaJogo, paginaEntrar } from "./paginas.js";
 import { painelJogo } from "./componentes.js";
 import { difundirPainel, difundirPresenca } from "./difusao.js";
 import { getEu, definirEu, carregarSessao, persistir } from "./sessao.js";
+import { criarNarrador } from "../tts/narrador.js";
 
 // Registra todas as rotas HTTP no app. `provider`/`promptBase` vêm do bootstrap;
 // `sala` é o registro de WebSockets, pra empurrar o painel atualizado aos demais
@@ -179,10 +180,14 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
       const texto = prop.texto;
       campanha.proposta = null;
 
+      const narrador = campanha.tom_voz
+        ? criarNarrador({ sala, campanhaId: id, voz: campanha.tom_voz })
+        : null;
       let abriu = false;
       const onDelta = (t) => {
         if (!abriu) { sala.transmitir(id, { tipo: "stream-inicio" }); abriu = true; }
         sala.transmitir(id, { tipo: "stream-token", texto: t });
+        narrador?.onDelta(t);
       };
       const snap = instantaneo(campanha, personagens);
       const tam = campanha.historico.length;
@@ -190,6 +195,7 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
         const r = await processarAcao({
           campanha, personagem: persLider, personagens, entrada: texto, provider, promptBase, onDelta,
         });
+        narrador?.fim().catch(() => {});
         campanha.teste_pendente = r.teste || null;
         if (campanha.historico.length > tam) campanha.desfazer = snap;
         campanha.fila_individual = fila;
@@ -244,13 +250,18 @@ export function registrarRotas(app, { provider, promptBase, sala }) {
       const jaEmCombate = campanha.modo === "combate"; // antes do turno
       // Streaming: repassa a narração em pedaços pra sala. O 'stream-inicio' sai
       // no 1º token (se houver), então branches no-op não disparam nada.
+      const narrador = campanha.tom_voz
+        ? criarNarrador({ sala, campanhaId: id, voz: campanha.tom_voz })
+        : null;
       let abriu = false;
       const onDelta = (texto) => {
         if (!abriu) { sala.transmitir(id, { tipo: "stream-inicio" }); abriu = true; }
         sala.transmitir(id, { tipo: "stream-token", texto });
+        narrador?.onDelta(texto);
       };
       try {
         const r = await fn({ campanha, personagens, ativo, onDelta });
+        narrador?.fim().catch(() => {});
         campanha.teste_pendente = r.teste || null;
         // Só registra o ponto de desfazer se um turno de fato rolou (o histórico
         // cresceu); branches no-op (sem ação / entrada vazia) não viram snapshot.

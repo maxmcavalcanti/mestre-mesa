@@ -10,6 +10,7 @@ import { criarSala } from "./src/web/sala.js";
 import { difundirPresenca, difundirDigitando } from "./src/web/difusao.js";
 import { carregarSessao } from "./src/web/sessao.js";
 import { painelJogo } from "./src/web/componentes.js";
+import { DIR_AUDIO } from "./src/tts/cache.js";
 
 const raiz = dirname(fileURLToPath(import.meta.url));
 const { provider, promptBase } = await iniciar();
@@ -19,6 +20,9 @@ const app = express();
 const PORTA = process.env.PORTA || 3000;
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(join(raiz, "public")));
+// Áudio TTS gerado pela narração (WAVs em data/audio/). Cache-busting é pelo
+// hash no nome, então pode marcar imutável.
+app.use("/audio", express.static(DIR_AUDIO, { immutable: true, maxAge: "365d" }));
 
 registrarRotas(app, { provider, promptBase, sala });
 

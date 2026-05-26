@@ -124,6 +124,7 @@ export function layout({ titulo, corpo }) {
     if (!window.MESA) return;
     var ws = null, tentativas = 0, ultimoDigitando = false;
     var streamAcc = "", bolha = null;
+    var audioFila = [], audioTocando = false, audioOk = false;
 
     // Não troca o painel enquanto o jogador está digitando a ação/rolagem, pra
     // não apagar o que ele escreveu (espelha o antigo gate do polling).
@@ -180,12 +181,34 @@ export function layout({ titulo, corpo }) {
         ? (outros[0] + ' está digitando…')
         : (outros.join(', ') + ' estão digitando…');
     }
+    // Fila de áudio: o servidor empurra { tipo:'audio', url } por sentença na
+    // ordem de chegada. Tocamos um por vez, sem autoplay até o usuário
+    // interagir com a página (políticas dos navegadores).
+    function tocarProximo() {
+      if (audioTocando || !audioOk || !audioFila.length) return;
+      var url = audioFila.shift();
+      audioTocando = true;
+      var a = new Audio(url);
+      a.onended = function () { audioTocando = false; tocarProximo(); };
+      a.onerror = function () { audioTocando = false; tocarProximo(); };
+      a.play().catch(function () { audioTocando = false; });
+    }
+    function liberarAudio() {
+      if (audioOk) return;
+      audioOk = true;
+      tocarProximo();
+    }
+    // Primeira interação do usuário libera o autoplay.
+    ['click', 'keydown', 'touchstart'].forEach(function (ev) {
+      document.addEventListener(ev, liberarAudio, { once: true, passive: true });
+    });
     function tratar(msg) {
       if (msg.tipo === 'painel') { if (!editando()) aplicarPainel(msg.html); }
       else if (msg.tipo === 'presenca') mostrarPresenca(msg.quem);
       else if (msg.tipo === 'digitando') mostrarDigitando(msg.quem);
       else if (msg.tipo === 'stream-inicio') streamInicio();
       else if (msg.tipo === 'stream-token') streamToken(msg.texto);
+      else if (msg.tipo === 'audio' && msg.url) { audioFila.push(msg.url); tocarProximo(); }
     }
     function conectar() {
       var proto = location.protocol === 'https:' ? 'wss' : 'ws';
