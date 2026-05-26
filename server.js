@@ -11,6 +11,7 @@ import { difundirPresenca, difundirDigitando } from "./src/web/difusao.js";
 import { carregarSessao } from "./src/web/sessao.js";
 import { painelJogo } from "./src/web/componentes.js";
 import { DIR_AUDIO } from "./src/tts/cache.js";
+import { parar as pararTts } from "./src/tts/processo.js";
 
 const raiz = dirname(fileURLToPath(import.meta.url));
 const { provider, promptBase } = await iniciar();
@@ -119,11 +120,16 @@ servidor.on("upgrade", (req, socket, head) => {
 });
 
 // Encerramento limpo: Ctrl+C / término do terminal fecham o servidor na hora.
+// Também derruba o servidor Python TTS (se foi spawned) pra não deixar processo solto.
+let encerrando = false;
 for (const sinal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
   process.on(sinal, () => {
+    if (encerrando) return;
+    encerrando = true;
     console.log("\nencerrando…");
+    pararTts().catch(() => {});
     wss.close();
     servidor.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 800).unref(); // força se demorar
+    setTimeout(() => process.exit(0), 1500).unref(); // força se demorar
   });
 }
